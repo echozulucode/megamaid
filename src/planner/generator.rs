@@ -32,7 +32,13 @@ impl PlanGenerator {
         };
 
         // Sort by path length (shorter paths first) to ensure parents come before children
-        detections.sort_by(|a, b| a.entry.path.as_os_str().len().cmp(&b.entry.path.as_os_str().len()));
+        detections.sort_by(|a, b| {
+            a.entry
+                .path
+                .as_os_str()
+                .len()
+                .cmp(&b.entry.path.as_os_str().len())
+        });
 
         // Track paths that are marked for deletion
         let mut deleted_paths: Vec<PathBuf> = Vec::new();

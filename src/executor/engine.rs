@@ -144,7 +144,10 @@ impl ExecutionEngine {
         let duration = start_time.elapsed();
         let summary = self.compute_summary(&operations, duration);
 
-        Ok(ExecutionResult { operations, summary })
+        Ok(ExecutionResult {
+            operations,
+            summary,
+        })
     }
 
     fn execute_single(&self, path: &Path, entry: &CleanupEntry) -> OperationResult {
@@ -223,7 +226,7 @@ impl ExecutionEngine {
 
     fn move_to_recycle_bin(&self, path: &Path) -> Result<(), std::io::Error> {
         // Use trash crate for cross-platform recycle bin support
-        trash::delete(path).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
+        trash::delete(path).map_err(std::io::Error::other)
     }
 
     fn prompt_user(&self, entry: &CleanupEntry) -> Result<UserChoice, ExecutionError> {
@@ -259,9 +262,7 @@ impl ExecutionEngine {
         let total_operations = operations.len();
         let successful = operations
             .iter()
-            .filter(|o| {
-                o.status == OperationStatus::Success || o.status == OperationStatus::DryRun
-            })
+            .filter(|o| o.status == OperationStatus::Success || o.status == OperationStatus::DryRun)
             .count();
         let failed = operations
             .iter()
@@ -346,7 +347,10 @@ mod tests {
 
         assert_eq!(result.summary.total_operations, 1);
         assert_eq!(result.operations[0].status, OperationStatus::DryRun);
-        assert!(file_path.exists(), "File should still exist in dry-run mode");
+        assert!(
+            file_path.exists(),
+            "File should still exist in dry-run mode"
+        );
     }
 
     #[test]

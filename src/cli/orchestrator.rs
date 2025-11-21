@@ -40,8 +40,8 @@ pub fn run_command(command: Commands) -> Result<()> {
             fail_fast,
             skip_verify,
             log_file,
-        } => run_execute(
-            &plan,
+        } => run_execute(ExecuteOptions {
+            plan_path: plan,
             dry_run,
             interactive,
             backup_dir,
@@ -49,7 +49,7 @@ pub fn run_command(command: Commands) -> Result<()> {
             fail_fast,
             skip_verify,
             log_file,
-        ),
+        }),
     }
 }
 
@@ -220,9 +220,9 @@ fn run_verify(
     Ok(())
 }
 
-/// Executes the execute command.
-fn run_execute(
-    plan_path: &Path,
+/// Options for execute command.
+struct ExecuteOptions {
+    plan_path: PathBuf,
     dry_run: bool,
     interactive: bool,
     backup_dir: Option<PathBuf>,
@@ -230,7 +230,11 @@ fn run_execute(
     fail_fast: bool,
     skip_verify: bool,
     log_file: PathBuf,
-) -> Result<()> {
+}
+
+/// Executes the execute command.
+fn run_execute(options: ExecuteOptions) -> Result<()> {
+    let plan_path = &options.plan_path;
     println!("🗑️  Executing cleanup plan: {}", plan_path.display());
     println!();
 
@@ -243,7 +247,7 @@ fn run_execute(
         serde_yaml::from_str(&content).context("Failed to parse plan file")?;
 
     // Verify unless skipped
-    if !skip_verify && !dry_run {
+    if !options.skip_verify && !options.dry_run {
         println!("🔍 Verifying plan before execution...");
         let verifier = VerificationEngine::new(VerificationConfig::default());
         let verification = verifier.verify(&plan)?;
@@ -259,9 +263,9 @@ fn run_execute(
     }
 
     // Configure execution
-    let mode = if dry_run {
+    let mode = if options.dry_run {
         ExecutionMode::DryRun
-    } else if interactive {
+    } else if options.interactive {
         ExecutionMode::Interactive
     } else {
         ExecutionMode::Batch
@@ -269,22 +273,25 @@ fn run_execute(
 
     let config = ExecutionConfig {
         mode,
-        backup_dir: backup_dir.clone(),
-        fail_fast,
-        use_recycle_bin: recycle_bin,
+        backup_dir: options.backup_dir.clone(),
+        fail_fast: options.fail_fast,
+        use_recycle_bin: options.recycle_bin,
     };
 
     // Display mode
-    if dry_run {
+    if options.dry_run {
         println!("🔄 DRY RUN MODE - No files will be deleted");
         println!();
-    } else if interactive {
+    } else if options.interactive {
         println!("💬 INTERACTIVE MODE - You will be prompted for each deletion");
         println!();
-    } else if let Some(ref backup_path) = backup_dir {
-        println!("📦 BACKUP MODE - Files will be moved to: {}", backup_path.display());
+    } else if let Some(ref backup_path) = options.backup_dir {
+        println!(
+            "📦 BACKUP MODE - Files will be moved to: {}",
+            backup_path.display()
+        );
         println!();
-    } else if recycle_bin {
+    } else if options.recycle_bin {
         println!("♻️  RECYCLE BIN MODE - Files will be moved to recycle bin");
         println!();
     }
@@ -305,13 +312,13 @@ fn run_execute(
     println!();
 
     // Create transaction logger
-    let options = TransactionOptions {
-        dry_run,
-        backup_dir: backup_dir.clone(),
-        use_recycle_bin: recycle_bin,
-        fail_fast,
+    let transaction_opts = TransactionOptions {
+        dry_run: options.dry_run,
+        backup_dir: options.backup_dir.clone(),
+        use_recycle_bin: options.recycle_bin,
+        fail_fast: options.fail_fast,
     };
-    let mut logger = TransactionLogger::new(plan_path, log_file.clone(), options);
+    let mut logger = TransactionLogger::new(plan_path, options.log_file.clone(), transaction_opts);
 
     println!("📋 Transaction ID: {}", logger.execution_id());
     println!();
@@ -349,9 +356,9 @@ fn run_execute(
     logger.finalize(&result, status)?;
 
     // Print summary
-    print_execution_summary(&result.summary, dry_run);
+    print_execution_summary(&result.summary, options.dry_run);
     println!();
-    println!("📄 Transaction log: {}", log_file.display());
+    println!("📄 Transaction log: {}", options.log_file.display());
 
     // Exit with error if any failures
     if result.summary.failed > 0 {

@@ -33,21 +33,17 @@ impl DriftReporter {
         // Missing files
         if !result.missing.is_empty() {
             report.push_str("## Missing Files\n\n");
-            report.push_str(
-                "The following files were in the plan but no longer exist:\n\n",
-            );
+            report.push_str("The following files were in the plan but no longer exist:\n\n");
             for path in &result.missing {
                 report.push_str(&format!("- {}\n", path.display()));
             }
-            report.push_str("\n");
+            report.push('\n');
         }
 
         // Drifted files
         if !result.drifted.is_empty() {
             report.push_str("## Drifted Files\n\n");
-            report.push_str(
-                "The following files have changed since the plan was created:\n\n",
-            );
+            report.push_str("The following files have changed since the plan was created:\n\n");
             for drift in &result.drifted {
                 report.push_str(&format!("### {}\n", drift.path.display()));
                 let drift_type_str = match drift.drift_type {
@@ -63,16 +59,13 @@ impl DriftReporter {
         // Permission errors (warnings)
         if !result.permission_errors.is_empty() {
             report.push_str("## Permission Warnings\n\n");
-            report.push_str(
-                "The following files could not be verified due to permission errors.\n",
-            );
-            report.push_str(
-                "These are warnings only and will not block execution:\n\n",
-            );
+            report
+                .push_str("The following files could not be verified due to permission errors.\n");
+            report.push_str("These are warnings only and will not block execution:\n\n");
             for path in &result.permission_errors {
                 report.push_str(&format!("- {}\n", path.display()));
             }
-            report.push_str("\n");
+            report.push('\n');
         }
 
         // Recommendations
@@ -82,7 +75,9 @@ impl DriftReporter {
             report.push_str("Consider one of the following actions:\n\n");
             report.push_str("1. Re-scan the directory to generate a fresh plan\n");
             report.push_str("2. Manually review the changes and update the plan file\n");
-            report.push_str("3. If changes are expected, use --skip-verify flag (not recommended)\n\n");
+            report.push_str(
+                "3. If changes are expected, use --skip-verify flag (not recommended)\n\n",
+            );
         }
 
         report

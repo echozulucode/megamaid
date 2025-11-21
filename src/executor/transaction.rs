@@ -131,8 +131,7 @@ impl TransactionLogger {
 
     /// Write the transaction log to disk.
     pub fn write(&self) -> std::io::Result<()> {
-        let yaml_content = serde_yaml::to_string(&self.log)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        let yaml_content = serde_yaml::to_string(&self.log).map_err(std::io::Error::other)?;
 
         // Atomic write: write to temp file, then rename
         let temp_path = self.log_path.with_extension("tmp");
@@ -155,9 +154,7 @@ impl TransactionLogger {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::executor::engine::{
-        ExecutionSummary, OperationAction, OperationStatus,
-    };
+    use crate::executor::engine::{ExecutionSummary, OperationAction, OperationStatus};
     use std::time::SystemTime;
     use tempfile::TempDir;
 
@@ -250,7 +247,9 @@ mod tests {
         let mut logger = TransactionLogger::new(&plan_path, log_path, options);
         let result = create_test_execution_result();
 
-        logger.finalize(&result, TransactionStatus::Completed).unwrap();
+        logger
+            .finalize(&result, TransactionStatus::Completed)
+            .unwrap();
 
         assert_eq!(logger.log.status, TransactionStatus::Completed);
         assert!(logger.log.completed_at.is_some());
@@ -383,7 +382,10 @@ mod tests {
 
         assert_eq!(logger.log.operations.len(), 1);
         assert_eq!(logger.log.operations[0].status, "Failed");
-        assert_eq!(logger.log.operations[0].error, Some("Permission denied".to_string()));
+        assert_eq!(
+            logger.log.operations[0].error,
+            Some("Permission denied".to_string())
+        );
     }
 
     #[test]

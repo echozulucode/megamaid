@@ -93,15 +93,15 @@ pub use detector::{
     BuildArtifactRule, DetectionEngine, DetectionResult, DetectionRule, ScanContext,
     SizeThresholdRule,
 };
+pub use executor::{
+    ExecutionConfig, ExecutionEngine, ExecutionError, ExecutionMode, ExecutionResult,
+    ExecutionSummary, ExecutionSummaryLog, LoggedOperation, OperationAction, OperationResult,
+    OperationStatus, TransactionLog, TransactionLogger, TransactionOptions, TransactionStatus,
+};
 pub use models::{CleanupAction, CleanupEntry, CleanupPlan, EntryType, FileEntry};
 pub use planner::{PlanGenerator, PlanWriter, WriteError};
 pub use scanner::{FileScanner, ProgressReport, ScanConfig, ScanError, ScanProgress};
 pub use verifier::{
     DriftDetection, DriftReporter, DriftType, VerificationConfig, VerificationEngine,
     VerificationError, VerificationResult,
-};
-pub use executor::{
-    ExecutionConfig, ExecutionEngine, ExecutionError, ExecutionMode, ExecutionResult,
-    ExecutionSummary, ExecutionSummaryLog, LoggedOperation, OperationAction, OperationResult,
-    OperationStatus, TransactionLog, TransactionLogger, TransactionOptions, TransactionStatus,
 };

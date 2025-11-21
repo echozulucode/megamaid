@@ -190,7 +190,12 @@ mod tests {
         let cli = Cli::try_parse_from(args).unwrap();
 
         match cli.command {
-            Commands::Verify { plan, output, fail_fast, skip_mtime } => {
+            Commands::Verify {
+                plan,
+                output,
+                fail_fast,
+                skip_mtime,
+            } => {
                 assert_eq!(plan, PathBuf::from("plan.yaml"));
                 assert_eq!(output, None);
                 assert!(!fail_fast);
@@ -214,7 +219,12 @@ mod tests {
         let cli = Cli::try_parse_from(args).unwrap();
 
         match cli.command {
-            Commands::Verify { plan, output, fail_fast, skip_mtime } => {
+            Commands::Verify {
+                plan,
+                output,
+                fail_fast,
+                skip_mtime,
+            } => {
                 assert_eq!(plan, PathBuf::from("plan.yaml"));
                 assert_eq!(output, Some(PathBuf::from("drift-report.txt")));
                 assert!(fail_fast);

@@ -158,8 +158,7 @@ impl VerificationEngine {
                         path: full_path.clone(),
                         drift_type: DriftType::ModificationTimeMismatch,
                         expected: entry.modified.clone(),
-                        actual: chrono::DateTime::<chrono::Utc>::from(current_mtime)
-                            .to_rfc3339(),
+                        actual: chrono::DateTime::<chrono::Utc>::from(current_mtime).to_rfc3339(),
                     });
                     if self.config.fail_fast {
                         return Ok(result);

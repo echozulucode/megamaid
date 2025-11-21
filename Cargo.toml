@@ -21,6 +21,7 @@ indicatif = "0.17"
 
 # Concurrency
 rayon = "1.10"
+num_cpus = "1.16"
 
 # Error handling
 thiserror = "1.0"
@@ -29,6 +30,10 @@ anyhow = "1.0"
 # Execution
 uuid = { version = "1.6", features = ["v4", "serde"] }
 trash = "3.1"
+
+# Configuration
+glob = "0.3"
+dirs = "5.0"
 
 [dev-dependencies]
 # Testing

@@ -292,11 +292,9 @@ fn test_custom_size_threshold_with_plan_filtering() {
 
     // Verify large.iso is detected
     assert!(
-        detections.iter().any(|d| d
-            .entry
-            .path
-            .to_string_lossy()
-            .contains("large.iso")),
+        detections
+            .iter()
+            .any(|d| d.entry.path.to_string_lossy().contains("large.iso")),
         "Should detect large.iso file"
     );
 }
