@@ -41,8 +41,7 @@ impl PlanGenerator {
                 .to_string();
 
             // Convert SystemTime to RFC3339 string
-            let modified = chrono::DateTime::<Utc>::from(detection.entry.modified)
-                .to_rfc3339();
+            let modified = chrono::DateTime::<Utc>::from(detection.entry.modified).to_rfc3339();
 
             plan.add_entry(CleanupEntry {
                 path: relative_path,

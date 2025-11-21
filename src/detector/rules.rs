@@ -1,7 +1,7 @@
 //! Detection rule implementations.
 
-use crate::models::{EntryType, FileEntry};
 use crate::detector::engine::ScanContext;
+use crate::models::{EntryType, FileEntry};
 
 /// Trait for detection rules that identify cleanup candidates.
 pub trait DetectionRule: Send + Sync {
@@ -90,7 +90,7 @@ impl DetectionRule for BuildArtifactRule {
             .and_then(|n| n.to_str())
             .unwrap_or("");
 
-        self.patterns.iter().any(|&pattern| dir_name == pattern)
+        self.patterns.contains(&dir_name)
     }
 
     fn reason(&self) -> String {
@@ -199,11 +199,7 @@ mod tests {
 
         for pattern in patterns {
             let dir = create_test_entry_dir(&format!("/project/{}", pattern));
-            assert!(
-                rule.should_flag(&dir, &context),
-                "Should flag {}",
-                pattern
-            );
+            assert!(rule.should_flag(&dir, &context), "Should flag {}", pattern);
         }
     }
 

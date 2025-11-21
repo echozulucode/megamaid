@@ -42,8 +42,7 @@ impl ScanProgress {
 
     /// Increments the directory count.
     pub fn increment_directory(&self) {
-        self.directories_visited
-            .fetch_add(1, Ordering::Relaxed);
+        self.directories_visited.fetch_add(1, Ordering::Relaxed);
     }
 
     /// Returns a snapshot of the current progress.

@@ -18,13 +18,7 @@ pub fn run_command(command: Commands) -> Result<()> {
             max_depth,
             skip_hidden,
             large_file_threshold,
-        } => run_scan(
-            &path,
-            &output,
-            max_depth,
-            skip_hidden,
-            large_file_threshold,
-        ),
+        } => run_scan(&path, &output, max_depth, skip_hidden, large_file_threshold),
         Commands::Stats { plan } => run_stats(&plan),
     }
 }
@@ -63,9 +57,7 @@ fn run_scan(
 
     // Scan the directory
     let scanner = FileScanner::new(config);
-    let entries = scanner
-        .scan(path)
-        .context("Failed to scan directory")?;
+    let entries = scanner.scan(path).context("Failed to scan directory")?;
 
     spinner.finish_with_message(format!("✓ Scanned {} entries", entries.len()));
     println!();
@@ -105,8 +97,7 @@ fn run_scan(
     );
     spinner.set_message(format!("Writing plan to {}...", output.display()));
 
-    PlanWriter::write(&plan, output)
-        .context("Failed to write cleanup plan")?;
+    PlanWriter::write(&plan, output).context("Failed to write cleanup plan")?;
 
     spinner.finish_with_message(format!("✓ Plan written to {}", output.display()));
     println!();
@@ -124,8 +115,8 @@ fn run_stats(plan_path: &Path) -> Result<()> {
         .context(format!("Failed to read plan file: {}", plan_path.display()))?;
 
     // Deserialize
-    let plan: crate::models::CleanupPlan = toml::from_str(&content)
-        .context("Failed to parse plan file")?;
+    let plan: crate::models::CleanupPlan =
+        toml::from_str(&content).context("Failed to parse plan file")?;
 
     println!("📊 Cleanup Plan Statistics");
     println!();
@@ -164,13 +155,7 @@ mod tests {
 
         let output_path = temp.path().join("plan.toml");
 
-        let result = run_scan(
-            temp.path(),
-            &output_path,
-            None,
-            true,
-            100,
-        );
+        let result = run_scan(temp.path(), &output_path, None, true, 100);
 
         assert!(result.is_ok());
         assert!(output_path.exists());
@@ -179,13 +164,7 @@ mod tests {
     #[test]
     fn test_run_scan_nonexistent_path() {
         let output = PathBuf::from("plan.toml");
-        let result = run_scan(
-            Path::new("/nonexistent/path"),
-            &output,
-            None,
-            true,
-            100,
-        );
+        let result = run_scan(Path::new("/nonexistent/path"), &output, None, true, 100);
 
         assert!(result.is_err());
     }

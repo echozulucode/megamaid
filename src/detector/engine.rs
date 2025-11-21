@@ -142,7 +142,7 @@ mod tests {
 
         let large_file = create_test_entry("large.bin", 2000);
 
-        let results = engine.analyze(&vec![large_file], &ScanContext::default());
+        let results = engine.analyze(&[large_file], &ScanContext::default());
 
         // Should only flag once (first rule wins)
         assert_eq!(results.len(), 1, "Should only flag once per entry");
@@ -167,7 +167,7 @@ mod tests {
         engine.add_rule(Box::new(TestRule));
 
         let entry = create_test_entry("test.txt", 1);
-        let results = engine.analyze(&vec![entry], &ScanContext::default());
+        let results = engine.analyze(&[entry], &ScanContext::default());
 
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].rule_name, "test");
@@ -203,7 +203,7 @@ mod tests {
         let engine = DetectionEngine::new();
 
         let entry = create_test_entry_dir("target");
-        let results = engine.analyze(&vec![entry.clone()], &ScanContext::default());
+        let results = engine.analyze(std::slice::from_ref(&entry), &ScanContext::default());
 
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].entry.path, entry.path);
@@ -252,7 +252,7 @@ mod tests {
         engine.add_rule(Box::new(SecondRule));
 
         let entry = create_test_entry("test.txt", 100);
-        let results = engine.analyze(&vec![entry], &ScanContext::default());
+        let results = engine.analyze(&[entry], &ScanContext::default());
 
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].rule_name, "first"); // First rule wins

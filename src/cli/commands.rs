@@ -122,7 +122,7 @@ mod tests {
                 max_depth,
                 ..
             } => {
-                assert_eq!(skip_hidden, true);
+                assert!(skip_hidden);
                 assert_eq!(large_file_threshold, 100);
                 assert_eq!(max_depth, None);
             }

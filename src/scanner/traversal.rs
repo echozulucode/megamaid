@@ -19,7 +19,7 @@ pub enum ScanError {
 }
 
 /// Configuration for file system scanning.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ScanConfig {
     /// Whether to follow symbolic links
     pub follow_links: bool,
@@ -29,16 +29,6 @@ pub struct ScanConfig {
 
     /// Whether to skip hidden files/directories
     pub skip_hidden: bool,
-}
-
-impl Default for ScanConfig {
-    fn default() -> Self {
-        Self {
-            follow_links: false,
-            max_depth: None,
-            skip_hidden: false,
-        }
-    }
 }
 
 /// Scans directories and collects file metadata.
@@ -55,9 +45,7 @@ impl FileScanner {
     /// Scans the given root directory and returns all entries.
     pub fn scan(&self, root: &Path) -> Result<Vec<FileEntry>, ScanError> {
         if !root.exists() {
-            return Err(ScanError::PathNotFound(
-                root.display().to_string(),
-            ));
+            return Err(ScanError::PathNotFound(root.display().to_string()));
         }
 
         let mut entries = Vec::new();
@@ -138,7 +126,10 @@ mod tests {
         // Should find: root directory + test.txt
         assert_eq!(results.len(), 2);
 
-        let file = results.iter().find(|e| e.path.ends_with("test.txt")).unwrap();
+        let file = results
+            .iter()
+            .find(|e| e.path.ends_with("test.txt"))
+            .unwrap();
         assert!(file.is_file());
         assert_eq!(file.size, 7); // "content" = 7 bytes
     }
@@ -155,7 +146,10 @@ mod tests {
         // Should find: root + a + a/b + a/b/c + a/b/c/file.txt = 5 entries
         assert!(results.len() >= 5);
 
-        let file = results.iter().find(|e| e.path.ends_with("file.txt")).unwrap();
+        let file = results
+            .iter()
+            .find(|e| e.path.ends_with("file.txt"))
+            .unwrap();
         assert!(file.is_file());
         assert_eq!(file.size, 4); // "test" = 4 bytes
     }
@@ -217,7 +211,10 @@ mod tests {
         let scanner = FileScanner::new(ScanConfig::default());
         let results = scanner.scan(temp.path()).unwrap();
 
-        let file = results.iter().find(|e| e.path.ends_with("sized.txt")).unwrap();
+        let file = results
+            .iter()
+            .find(|e| e.path.ends_with("sized.txt"))
+            .unwrap();
         assert_eq!(file.size, 1024);
         assert!(file.modified.elapsed().unwrap().as_secs() < 5);
     }
@@ -238,8 +235,8 @@ mod tests {
     fn test_default_config() {
         let config = ScanConfig::default();
 
-        assert_eq!(config.follow_links, false);
+        assert!(!config.follow_links);
         assert_eq!(config.max_depth, None);
-        assert_eq!(config.skip_hidden, false);
+        assert!(!config.skip_hidden);
     }
 }

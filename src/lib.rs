@@ -15,9 +15,41 @@
 //! - **Planner**: Generates human-editable TOML cleanup plans
 //! - **CLI**: Command-line interface with progress reporting
 //!
-//! ## Example
+//! ## Complete Workflow Example
 //!
 //! ```no_run
+//! use megamaid::{FileScanner, ScanConfig, DetectionEngine, ScanContext, PlanGenerator, PlanWriter};
+//! use std::path::{Path, PathBuf};
+//!
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! // Step 1: Scan a directory
+//! let scanner = FileScanner::new(ScanConfig::default());
+//! let entries = scanner.scan(Path::new("/path/to/scan"))?;
+//!
+//! println!("Scanned {} entries", entries.len());
+//!
+//! // Step 2: Detect cleanup candidates
+//! let engine = DetectionEngine::new(); // Uses default rules (size + build artifacts)
+//! let detections = engine.analyze(&entries, &ScanContext::default());
+//!
+//! println!("Found {} cleanup candidates", detections.len());
+//!
+//! // Step 3: Generate cleanup plan
+//! let generator = PlanGenerator::new(PathBuf::from("/path/to/scan"));
+//! let plan = generator.generate(detections);
+//!
+//! // Step 4: Write plan to TOML file
+//! let plan_path = Path::new("cleanup-plan.toml");
+//! PlanWriter::write(&plan, plan_path)?;
+//!
+//! println!("Plan written to {}", plan_path.display());
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Basic Example: Creating a FileEntry
+//!
+//! ```
 //! use megamaid::models::{FileEntry, EntryType};
 //! use std::path::PathBuf;
 //! use std::time::SystemTime;
@@ -28,6 +60,9 @@
 //!     SystemTime::now(),
 //!     EntryType::File,
 //! );
+//!
+//! assert_eq!(entry.size, 1024);
+//! assert!(entry.is_file());
 //! ```
 
 /// Core data models
@@ -46,11 +81,11 @@ pub mod planner;
 pub mod cli;
 
 // Re-export commonly used types
-pub use models::{CleanupAction, CleanupEntry, CleanupPlan, EntryType, FileEntry};
-pub use scanner::{FileScanner, ProgressReport, ScanConfig, ScanError, ScanProgress};
+pub use cli::{run_command, Cli, Commands};
 pub use detector::{
     BuildArtifactRule, DetectionEngine, DetectionResult, DetectionRule, ScanContext,
     SizeThresholdRule,
 };
+pub use models::{CleanupAction, CleanupEntry, CleanupPlan, EntryType, FileEntry};
 pub use planner::{PlanGenerator, PlanWriter, WriteError};
-pub use cli::{run_command, Cli, Commands};
+pub use scanner::{FileScanner, ProgressReport, ScanConfig, ScanError, ScanProgress};

@@ -33,12 +33,7 @@ pub enum EntryType {
 
 impl FileEntry {
     /// Creates a new FileEntry.
-    pub fn new(
-        path: PathBuf,
-        size: u64,
-        modified: SystemTime,
-        entry_type: EntryType,
-    ) -> Self {
+    pub fn new(path: PathBuf, size: u64, modified: SystemTime, entry_type: EntryType) -> Self {
         Self {
             path,
             size,
@@ -86,12 +81,7 @@ mod tests {
         let size = 1024;
         let modified = SystemTime::now();
 
-        let entry = FileEntry::new(
-            path.clone(),
-            size,
-            modified,
-            EntryType::File,
-        );
+        let entry = FileEntry::new(path.clone(), size, modified, EntryType::File);
 
         assert_eq!(entry.path, path);
         assert_eq!(entry.size, size);
@@ -156,6 +146,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::useless_vec)]
     fn test_file_entry_ordering_by_size() {
         let small = FileEntry::new(
             PathBuf::from("/small.txt"),
