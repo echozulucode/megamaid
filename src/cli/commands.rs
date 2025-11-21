@@ -45,6 +45,56 @@ pub enum Commands {
         #[arg(value_name = "FILE")]
         plan: PathBuf,
     },
+
+    /// Verify a cleanup plan against current filesystem state
+    Verify {
+        /// Path to cleanup plan file
+        #[arg(value_name = "FILE")]
+        plan: PathBuf,
+
+        /// Output drift report to file
+        #[arg(short, long, value_name = "FILE")]
+        output: Option<PathBuf>,
+
+        /// Fail fast on first drift detection
+        #[arg(long)]
+        fail_fast: bool,
+
+        /// Skip modification time checks
+        #[arg(long)]
+        skip_mtime: bool,
+    },
+
+    /// Execute a cleanup plan
+    Execute {
+        /// Path to cleanup plan file
+        #[arg(value_name = "FILE")]
+        plan: PathBuf,
+
+        /// Dry-run mode (simulate without deleting)
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Interactive mode (prompt for each deletion)
+        #[arg(short, long)]
+        interactive: bool,
+
+        /// Backup directory (move instead of delete)
+        #[arg(long, value_name = "DIR")]
+        backup_dir: Option<PathBuf>,
+
+        /// Use system recycle bin
+        #[arg(long)]
+        recycle_bin: bool,
+
+        /// Stop on first error
+        #[arg(long)]
+        fail_fast: bool,
+
+        /// Skip verification before execution
+        #[arg(long)]
+        skip_verify: bool,
+    },
 }
 
 #[cfg(test)]
@@ -127,6 +177,121 @@ mod tests {
                 assert_eq!(max_depth, None);
             }
             _ => panic!("Expected Scan command"),
+        }
+    }
+
+    #[test]
+    fn test_cli_parsing_verify_command() {
+        let args = vec!["megamaid", "verify", "plan.yaml"];
+        let cli = Cli::try_parse_from(args).unwrap();
+
+        match cli.command {
+            Commands::Verify { plan, output, fail_fast, skip_mtime } => {
+                assert_eq!(plan, PathBuf::from("plan.yaml"));
+                assert_eq!(output, None);
+                assert!(!fail_fast);
+                assert!(!skip_mtime);
+            }
+            _ => panic!("Expected Verify command"),
+        }
+    }
+
+    #[test]
+    fn test_cli_parsing_verify_with_options() {
+        let args = vec![
+            "megamaid",
+            "verify",
+            "plan.yaml",
+            "--output",
+            "drift-report.txt",
+            "--fail-fast",
+            "--skip-mtime",
+        ];
+        let cli = Cli::try_parse_from(args).unwrap();
+
+        match cli.command {
+            Commands::Verify { plan, output, fail_fast, skip_mtime } => {
+                assert_eq!(plan, PathBuf::from("plan.yaml"));
+                assert_eq!(output, Some(PathBuf::from("drift-report.txt")));
+                assert!(fail_fast);
+                assert!(skip_mtime);
+            }
+            _ => panic!("Expected Verify command"),
+        }
+    }
+
+    #[test]
+    fn test_cli_parsing_execute_command() {
+        let args = vec!["megamaid", "execute", "plan.yaml"];
+        let cli = Cli::try_parse_from(args).unwrap();
+
+        match cli.command {
+            Commands::Execute {
+                plan,
+                dry_run,
+                interactive,
+                backup_dir,
+                recycle_bin,
+                fail_fast,
+                skip_verify,
+            } => {
+                assert_eq!(plan, PathBuf::from("plan.yaml"));
+                assert!(!dry_run);
+                assert!(!interactive);
+                assert_eq!(backup_dir, None);
+                assert!(!recycle_bin);
+                assert!(!fail_fast);
+                assert!(!skip_verify);
+            }
+            _ => panic!("Expected Execute command"),
+        }
+    }
+
+    #[test]
+    fn test_cli_parsing_execute_with_options() {
+        let args = vec![
+            "megamaid",
+            "execute",
+            "plan.yaml",
+            "--dry-run",
+            "--fail-fast",
+            "--skip-verify",
+        ];
+        let cli = Cli::try_parse_from(args).unwrap();
+
+        match cli.command {
+            Commands::Execute {
+                plan,
+                dry_run,
+                fail_fast,
+                skip_verify,
+                ..
+            } => {
+                assert_eq!(plan, PathBuf::from("plan.yaml"));
+                assert!(dry_run);
+                assert!(fail_fast);
+                assert!(skip_verify);
+            }
+            _ => panic!("Expected Execute command"),
+        }
+    }
+
+    #[test]
+    fn test_cli_parsing_execute_with_backup() {
+        let args = vec![
+            "megamaid",
+            "execute",
+            "plan.yaml",
+            "--backup-dir",
+            "./backups",
+        ];
+        let cli = Cli::try_parse_from(args).unwrap();
+
+        match cli.command {
+            Commands::Execute { backup_dir, .. } => {
+                assert_eq!(backup_dir, Some(PathBuf::from("./backups")));
+            }
+            _ => panic!("Expected Execute command"),
         }
     }
 }

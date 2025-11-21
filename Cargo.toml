@@ -26,6 +26,10 @@ rayon = "1.10"
 thiserror = "1.0"
 anyhow = "1.0"
 
+# Execution
+uuid = { version = "1.6", features = ["v4", "serde"] }
+trash = "3.1"
+
 [dev-dependencies]
 # Testing
 tempfile = "3.8"

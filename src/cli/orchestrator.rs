@@ -2,12 +2,14 @@
 
 use crate::cli::Commands;
 use crate::detector::{DetectionEngine, ScanContext, SizeThresholdRule};
+use crate::executor::{ExecutionConfig, ExecutionEngine, ExecutionMode};
 use crate::planner::{PlanGenerator, PlanWriter};
 use crate::scanner::{FileScanner, ScanConfig};
+use crate::verifier::{DriftReporter, VerificationConfig, VerificationEngine};
 use anyhow::{Context, Result};
 use indicatif::{ProgressBar, ProgressStyle};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// Runs the specified command.
 pub fn run_command(command: Commands) -> Result<()> {
@@ -20,6 +22,29 @@ pub fn run_command(command: Commands) -> Result<()> {
             large_file_threshold,
         } => run_scan(&path, &output, max_depth, skip_hidden, large_file_threshold),
         Commands::Stats { plan } => run_stats(&plan),
+        Commands::Verify {
+            plan,
+            output,
+            fail_fast,
+            skip_mtime,
+        } => run_verify(&plan, output, fail_fast, skip_mtime),
+        Commands::Execute {
+            plan,
+            dry_run,
+            interactive,
+            backup_dir,
+            recycle_bin,
+            fail_fast,
+            skip_verify,
+        } => run_execute(
+            &plan,
+            dry_run,
+            interactive,
+            backup_dir,
+            recycle_bin,
+            fail_fast,
+            skip_verify,
+        ),
     }
 }
 
@@ -126,6 +151,203 @@ fn run_stats(plan_path: &Path) -> Result<()> {
     print_plan_summary(&plan);
 
     Ok(())
+}
+
+/// Executes the verify command.
+fn run_verify(
+    plan_path: &Path,
+    output: Option<PathBuf>,
+    fail_fast: bool,
+    skip_mtime: bool,
+) -> Result<()> {
+    println!("📋 Verifying cleanup plan: {}", plan_path.display());
+    println!();
+
+    // Read plan file
+    let content = fs::read_to_string(plan_path)
+        .context(format!("Failed to read plan file: {}", plan_path.display()))?;
+
+    // Deserialize
+    let plan: crate::models::CleanupPlan =
+        serde_yaml::from_str(&content).context("Failed to parse plan file")?;
+
+    // Configure verification
+    let config = VerificationConfig {
+        check_mtime: !skip_mtime,
+        check_size: true,
+        fail_fast,
+    };
+
+    // Run verification
+    let spinner = ProgressBar::new_spinner();
+    spinner.set_style(
+        ProgressStyle::default_spinner()
+            .template("{spinner:.green} {msg}")
+            .unwrap(),
+    );
+    spinner.set_message("Verifying entries...");
+
+    let verifier = VerificationEngine::new(config);
+    let result = verifier.verify(&plan)?;
+
+    spinner.finish_with_message(format!(
+        "✓ Verified {} of {} entries",
+        result.verified, result.total_entries
+    ));
+    println!();
+
+    // Print report
+    let report = DriftReporter::generate_report(&result);
+    println!("{}", report);
+
+    // Write report file if requested
+    if let Some(output_path) = output {
+        DriftReporter::write_report(&result, &output_path)?;
+        println!("📄 Drift report written to: {}", output_path.display());
+        println!();
+    }
+
+    // Exit with error if drift detected
+    if !result.is_safe_to_execute() {
+        anyhow::bail!("Drift detected - plan is not safe to execute");
+    }
+
+    Ok(())
+}
+
+/// Executes the execute command.
+fn run_execute(
+    plan_path: &Path,
+    dry_run: bool,
+    interactive: bool,
+    backup_dir: Option<PathBuf>,
+    recycle_bin: bool,
+    fail_fast: bool,
+    skip_verify: bool,
+) -> Result<()> {
+    println!("🗑️  Executing cleanup plan: {}", plan_path.display());
+    println!();
+
+    // Read plan file
+    let content = fs::read_to_string(plan_path)
+        .context(format!("Failed to read plan file: {}", plan_path.display()))?;
+
+    // Deserialize
+    let plan: crate::models::CleanupPlan =
+        serde_yaml::from_str(&content).context("Failed to parse plan file")?;
+
+    // Verify unless skipped
+    if !skip_verify && !dry_run {
+        println!("🔍 Verifying plan before execution...");
+        let verifier = VerificationEngine::new(VerificationConfig::default());
+        let verification = verifier.verify(&plan)?;
+
+        if !verification.is_safe_to_execute() {
+            let report = DriftReporter::generate_report(&verification);
+            println!("{}", report);
+            anyhow::bail!(
+                "Drift detected - cannot execute. Use --skip-verify to override (not recommended)."
+            );
+        }
+        println!("✓ Verification passed\n");
+    }
+
+    // Configure execution
+    let mode = if dry_run {
+        ExecutionMode::DryRun
+    } else if interactive {
+        ExecutionMode::Interactive
+    } else {
+        ExecutionMode::Batch
+    };
+
+    let config = ExecutionConfig {
+        mode,
+        backup_dir: backup_dir.clone(),
+        fail_fast,
+        use_recycle_bin: recycle_bin,
+    };
+
+    // Display mode
+    if dry_run {
+        println!("🔄 DRY RUN MODE - No files will be deleted");
+        println!();
+    } else if interactive {
+        println!("💬 INTERACTIVE MODE - You will be prompted for each deletion");
+        println!();
+    } else if let Some(ref backup_path) = backup_dir {
+        println!("📦 BACKUP MODE - Files will be moved to: {}", backup_path.display());
+        println!();
+    } else if recycle_bin {
+        println!("♻️  RECYCLE BIN MODE - Files will be moved to recycle bin");
+        println!();
+    }
+
+    // Count Delete actions
+    let delete_count = plan
+        .entries
+        .iter()
+        .filter(|e| e.action == crate::models::CleanupAction::Delete)
+        .count();
+
+    if delete_count == 0 {
+        println!("No entries marked for deletion.");
+        return Ok(());
+    }
+
+    println!("Processing {} deletion(s)...", delete_count);
+    println!();
+
+    // Execute
+    let executor = ExecutionEngine::new(config);
+    let progress = ProgressBar::new(delete_count as u64);
+    progress.set_style(
+        ProgressStyle::default_bar()
+            .template("{spinner:.green} [{bar:40.cyan/blue}] {pos}/{len} {msg}")
+            .unwrap()
+            .progress_chars("#>-"),
+    );
+
+    let result = executor.execute(&plan)?;
+
+    // Update progress for each operation
+    for op in &result.operations {
+        progress.inc(1);
+        if op.status == crate::executor::OperationStatus::Failed {
+            progress.set_message(format!("Failed: {}", op.path.display()));
+        }
+    }
+
+    progress.finish_with_message("Done");
+    println!();
+
+    // Print summary
+    print_execution_summary(&result.summary, dry_run);
+
+    // Exit with error if any failures
+    if result.summary.failed > 0 {
+        anyhow::bail!("{} operation(s) failed", result.summary.failed);
+    }
+
+    Ok(())
+}
+
+fn print_execution_summary(summary: &crate::executor::ExecutionSummary, dry_run: bool) {
+    println!("Summary:");
+    println!("  Total operations: {}", summary.total_operations);
+    println!("  Successful: {}", summary.successful);
+    println!("  Failed: {}", summary.failed);
+    println!("  Skipped: {}", summary.skipped);
+    println!(
+        "  Space freed: {:.2} GB",
+        summary.space_freed as f64 / 1_073_741_824.0
+    );
+    println!("  Duration: {:.2}s", summary.duration.as_secs_f64());
+
+    if dry_run {
+        println!();
+        println!("This was a dry run. No files were actually deleted.");
+    }
 }
 
 /// Prints a summary of the cleanup plan.

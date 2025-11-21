@@ -5,14 +5,15 @@
 //! ## Overview
 //!
 //! Megamaid scans directories to identify cleanup candidates (large files, build artifacts,
-//! etc.) and generates a human-editable TOML plan file. The plan can be reviewed and
+//! etc.) and generates a human-editable YAML plan file. The plan can be reviewed and
 //! modified before execution, ensuring safe cleanup operations.
 //!
 //! ## Architecture
 //!
 //! - **Scanner**: Traverses file system using `walkdir`, collecting metadata
 //! - **Detector**: Applies configurable rules to identify cleanup candidates
-//! - **Planner**: Generates human-editable TOML cleanup plans
+//! - **Planner**: Generates human-editable YAML cleanup plans
+//! - **Verifier**: Detects filesystem drift before plan execution
 //! - **CLI**: Command-line interface with progress reporting
 //!
 //! ## Complete Workflow Example
@@ -38,8 +39,8 @@
 //! let generator = PlanGenerator::new(PathBuf::from("/path/to/scan"));
 //! let plan = generator.generate(detections);
 //!
-//! // Step 4: Write plan to TOML file
-//! let plan_path = Path::new("cleanup-plan.toml");
+//! // Step 4: Write plan to YAML file
+//! let plan_path = Path::new("cleanup-plan.yaml");
 //! PlanWriter::write(&plan, plan_path)?;
 //!
 //! println!("Plan written to {}", plan_path.display());
@@ -77,6 +78,12 @@ pub mod detector;
 /// Plan generation and serialization
 pub mod planner;
 
+/// Plan verification and drift detection
+pub mod verifier;
+
+/// Plan execution and deletion operations
+pub mod executor;
+
 /// Command-line interface
 pub mod cli;
 
@@ -89,3 +96,11 @@ pub use detector::{
 pub use models::{CleanupAction, CleanupEntry, CleanupPlan, EntryType, FileEntry};
 pub use planner::{PlanGenerator, PlanWriter, WriteError};
 pub use scanner::{FileScanner, ProgressReport, ScanConfig, ScanError, ScanProgress};
+pub use verifier::{
+    DriftDetection, DriftReporter, DriftType, VerificationConfig, VerificationEngine,
+    VerificationError, VerificationResult,
+};
+pub use executor::{
+    ExecutionConfig, ExecutionEngine, ExecutionError, ExecutionMode, ExecutionResult,
+    ExecutionSummary, OperationAction, OperationResult, OperationStatus,
+};
