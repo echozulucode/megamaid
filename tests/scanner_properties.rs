@@ -102,11 +102,11 @@ proptest! {
             entries: vec![entry],
         };
 
-        // Serialize to TOML
-        let toml_string = toml::to_string(&plan).unwrap();
+        // Serialize to YAML
+        let yaml_string = serde_yaml::to_string(&plan).unwrap();
 
         // Deserialize back
-        let roundtrip: CleanupPlan = toml::from_str(&toml_string).unwrap();
+        let roundtrip: CleanupPlan = serde_yaml::from_str(&yaml_string).unwrap();
 
         // Verify data preservation
         prop_assert_eq!(&plan.entries[0].path, &roundtrip.entries[0].path);
@@ -121,7 +121,7 @@ proptest! {
         use chrono::Utc;
 
         let temp = TempDir::new().unwrap();
-        let plan_path = temp.path().join("test_plan.toml");
+        let plan_path = temp.path().join("test_plan.yaml");
 
         // Create plan with multiple entries
         let entries: Vec<CleanupEntry> = sizes
@@ -149,7 +149,7 @@ proptest! {
 
         // Read back
         let content = std::fs::read_to_string(&plan_path).unwrap();
-        let loaded_plan: CleanupPlan = toml::from_str(&content).unwrap();
+        let loaded_plan: CleanupPlan = serde_yaml::from_str(&content).unwrap();
 
         // Verify
         prop_assert_eq!(original_plan.entries.len(), loaded_plan.entries.len());

@@ -89,12 +89,36 @@ impl FileScanner {
             EntryType::File
         };
 
+        // For directories, calculate recursive size
+        let size = if metadata.is_dir() {
+            self.calculate_dir_size(entry.path())?
+        } else {
+            metadata.len()
+        };
+
         Ok(FileEntry::new(
             entry.path().to_path_buf(),
-            metadata.len(),
+            size,
             metadata.modified()?,
             entry_type,
         ))
+    }
+
+    /// Calculates the total size of all files in a directory recursively.
+    fn calculate_dir_size(&self, dir_path: &Path) -> Result<u64, ScanError> {
+        let mut total_size = 0u64;
+
+        for entry in WalkDir::new(dir_path).follow_links(false) {
+            let entry = entry?;
+            let metadata = entry.metadata()?;
+
+            // Only count files, not directories themselves
+            if metadata.is_file() {
+                total_size = total_size.saturating_add(metadata.len());
+            }
+        }
+
+        Ok(total_size)
     }
 }
 

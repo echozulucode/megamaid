@@ -20,7 +20,10 @@ impl PlanGenerator {
     ///
     /// Each detection result is converted to a CleanupEntry with an appropriate
     /// default action based on the rule type.
-    pub fn generate(&self, detections: Vec<DetectionResult>) -> CleanupPlan {
+    ///
+    /// If a directory is marked for deletion, its children are automatically
+    /// excluded from the plan to avoid redundancy.
+    pub fn generate(&self, mut detections: Vec<DetectionResult>) -> CleanupPlan {
         let mut plan = CleanupPlan {
             version: env!("CARGO_PKG_VERSION").to_string(),
             created_at: Utc::now(),
@@ -28,17 +31,47 @@ impl PlanGenerator {
             entries: Vec::new(),
         };
 
+        // Sort by path length (shorter paths first) to ensure parents come before children
+        detections.sort_by(|a, b| a.entry.path.as_os_str().len().cmp(&b.entry.path.as_os_str().len()));
+
+        // Track paths that are marked for deletion
+        let mut deleted_paths: Vec<PathBuf> = Vec::new();
+
         for detection in detections {
+            // Check if this entry is a child of an already-deleted directory
+            let is_child_of_deleted = deleted_paths.iter().any(|deleted_path| {
+                detection.entry.path.starts_with(deleted_path)
+                    && detection.entry.path != *deleted_path
+            });
+
+            if is_child_of_deleted {
+                continue; // Skip this entry - parent is already being deleted
+            }
+
             let action = self.default_action_for_rule(&detection.rule_name);
+
+            // If this is a directory marked for deletion, track it
+            if detection.entry.entry_type == crate::models::EntryType::Directory
+                && action == CleanupAction::Delete
+            {
+                deleted_paths.push(detection.entry.path.clone());
+            }
 
             // Convert absolute path to relative path string
             let relative_path = detection
                 .entry
                 .path
                 .strip_prefix(&self.base_path)
-                .unwrap_or(&detection.entry.path)
-                .to_string_lossy()
-                .to_string();
+                .unwrap_or(&detection.entry.path);
+
+            let relative_path_str = relative_path.to_string_lossy().to_string();
+
+            // Handle the case where path equals base_path (would result in empty string)
+            let relative_path = if relative_path_str.is_empty() {
+                ".".to_string()
+            } else {
+                relative_path_str
+            };
 
             // Convert SystemTime to RFC3339 string
             let modified = chrono::DateTime::<Utc>::from(detection.entry.modified).to_rfc3339();

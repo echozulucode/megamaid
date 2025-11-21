@@ -116,7 +116,7 @@ fn run_stats(plan_path: &Path) -> Result<()> {
 
     // Deserialize
     let plan: crate::models::CleanupPlan =
-        toml::from_str(&content).context("Failed to parse plan file")?;
+        serde_yaml::from_str(&content).context("Failed to parse plan file")?;
 
     println!("📊 Cleanup Plan Statistics");
     println!();
@@ -153,7 +153,7 @@ mod tests {
         fs::write(temp.path().join("test.txt"), "hello").unwrap();
         fs::create_dir_all(temp.path().join("target")).unwrap();
 
-        let output_path = temp.path().join("plan.toml");
+        let output_path = temp.path().join("plan.yaml");
 
         let result = run_scan(temp.path(), &output_path, None, true, 100);
 
@@ -163,7 +163,7 @@ mod tests {
 
     #[test]
     fn test_run_scan_nonexistent_path() {
-        let output = PathBuf::from("plan.toml");
+        let output = PathBuf::from("plan.yaml");
         let result = run_scan(Path::new("/nonexistent/path"), &output, None, true, 100);
 
         assert!(result.is_err());
@@ -172,21 +172,20 @@ mod tests {
     #[test]
     fn test_run_stats_with_valid_plan() {
         let temp = TempDir::new().unwrap();
-        let plan_path = temp.path().join("plan.toml");
+        let plan_path = temp.path().join("plan.yaml");
 
         // Create a minimal valid plan
         let plan_content = r#"
-version = "0.1.0"
-created_at = "2025-11-19T12:00:00Z"
-base_path = "/test"
-
-[[entries]]
-path = "test.txt"
-size = 1000
-modified = "2025-11-19T12:00:00Z"
-action = "delete"
-rule_name = "test"
-reason = "Test"
+version: "0.1.0"
+created_at: "2025-11-19T12:00:00Z"
+base_path: "/test"
+entries:
+  - path: "test.txt"
+    size: 1000
+    modified: "2025-11-19T12:00:00Z"
+    action: delete
+    rule_name: test
+    reason: Test
 "#;
 
         fs::write(&plan_path, plan_content).unwrap();
@@ -196,11 +195,11 @@ reason = "Test"
     }
 
     #[test]
-    fn test_run_stats_invalid_toml() {
+    fn test_run_stats_invalid_yaml() {
         let temp = TempDir::new().unwrap();
-        let plan_path = temp.path().join("plan.toml");
+        let plan_path = temp.path().join("plan.yaml");
 
-        fs::write(&plan_path, "invalid toml content [[[").unwrap();
+        fs::write(&plan_path, "invalid: yaml: content: [[[").unwrap();
 
         let result = run_stats(&plan_path);
         assert!(result.is_err());

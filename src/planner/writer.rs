@@ -9,9 +9,9 @@ use thiserror::Error;
 /// Errors that can occur during plan writing.
 #[derive(Debug, Error)]
 pub enum WriteError {
-    /// Failed to serialize plan to TOML
+    /// Failed to serialize plan to YAML
     #[error("Failed to serialize plan: {0}")]
-    Serialization(#[from] toml::ser::Error),
+    Serialization(#[from] serde_yaml::Error),
 
     /// I/O error during file operations
     #[error("I/O error: {0}")]
@@ -22,13 +22,13 @@ pub enum WriteError {
     Validation(String),
 }
 
-/// Writes cleanup plans to TOML files with atomic operations.
+/// Writes cleanup plans to YAML files with atomic operations.
 pub struct PlanWriter;
 
 impl PlanWriter {
     /// Writes a cleanup plan to a file atomically.
     ///
-    /// The plan is first validated, then serialized to TOML, and finally written
+    /// The plan is first validated, then serialized to YAML, and finally written
     /// to a temporary file before being renamed to the target path. This ensures
     /// the write is atomic and won't leave a corrupted file on failure.
     ///
@@ -44,11 +44,11 @@ impl PlanWriter {
         // Validate the plan
         Self::validate(plan)?;
 
-        // Serialize to TOML
-        let toml_content = toml::to_string_pretty(plan)?;
+        // Serialize to YAML
+        let yaml_content = serde_yaml::to_string(plan)?;
 
         // Write atomically via temp file
-        Self::write_atomic(path, &toml_content)?;
+        Self::write_atomic(path, &yaml_content)?;
 
         Ok(())
     }
@@ -135,7 +135,7 @@ mod tests {
     #[test]
     fn test_write_and_read_back() {
         let temp_dir = TempDir::new().unwrap();
-        let plan_path = temp_dir.path().join("plan.toml");
+        let plan_path = temp_dir.path().join("plan.yaml");
 
         let plan = create_test_plan();
 
@@ -147,7 +147,7 @@ mod tests {
 
         // Read and deserialize
         let content = fs::read_to_string(&plan_path).unwrap();
-        let loaded_plan: CleanupPlan = toml::from_str(&content).unwrap();
+        let loaded_plan: CleanupPlan = serde_yaml::from_str(&content).unwrap();
 
         // Verify content matches
         assert_eq!(loaded_plan.version, plan.version);
@@ -158,7 +158,7 @@ mod tests {
     #[test]
     fn test_write_creates_parent_directory() {
         let temp_dir = TempDir::new().unwrap();
-        let plan_path = temp_dir.path().join("subdir/nested/plan.toml");
+        let plan_path = temp_dir.path().join("subdir/nested/plan.yaml");
 
         let plan = create_test_plan();
 
@@ -214,7 +214,7 @@ mod tests {
 
     #[test]
     fn test_temp_path_generation() {
-        let target = Path::new("/test/plan.toml");
+        let target = Path::new("/test/plan.yaml");
         let temp = PlanWriter::temp_path(target);
 
         assert_eq!(temp, PathBuf::from("/test/plan.tmp"));
@@ -223,7 +223,7 @@ mod tests {
     #[test]
     fn test_write_overwrites_existing_file() {
         let temp_dir = TempDir::new().unwrap();
-        let plan_path = temp_dir.path().join("plan.toml");
+        let plan_path = temp_dir.path().join("plan.yaml");
 
         // Write initial plan
         let plan1 = create_test_plan();
@@ -236,24 +236,24 @@ mod tests {
 
         // Verify second version is persisted
         let content = fs::read_to_string(&plan_path).unwrap();
-        let loaded: CleanupPlan = toml::from_str(&content).unwrap();
+        let loaded: CleanupPlan = serde_yaml::from_str(&content).unwrap();
         assert_eq!(loaded.version, "0.2.0");
     }
 
     #[test]
     fn test_serialization_format() {
         let temp_dir = TempDir::new().unwrap();
-        let plan_path = temp_dir.path().join("plan.toml");
+        let plan_path = temp_dir.path().join("plan.yaml");
 
         let plan = create_test_plan();
         PlanWriter::write(&plan, &plan_path).unwrap();
 
         let content = fs::read_to_string(&plan_path).unwrap();
 
-        // Verify TOML structure contains expected fields
+        // Verify YAML structure contains expected fields
         assert!(content.contains("version"));
         assert!(content.contains("created_at"));
         assert!(content.contains("base_path"));
-        assert!(content.contains("[[entries]]"));
+        assert!(content.contains("entries"));
     }
 }

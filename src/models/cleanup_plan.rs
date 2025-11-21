@@ -1,4 +1,4 @@
-//! Cleanup plan representation for TOML serialization.
+//! Cleanup plan representation for YAML serialization.
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -244,30 +244,29 @@ mod tests {
             "Build artifact".to_string(),
         ));
 
-        // Test TOML serialization
-        let toml_string = toml::to_string(&plan).unwrap();
-        assert!(toml_string.contains("version"));
-        assert!(toml_string.contains("base_path"));
-        assert!(toml_string.contains("[[entries]]"));
+        // Test YAML serialization
+        let yaml_string = serde_yaml::to_string(&plan).unwrap();
+        assert!(yaml_string.contains("version"));
+        assert!(yaml_string.contains("base_path"));
+        assert!(yaml_string.contains("entries"));
     }
 
     #[test]
     fn test_cleanup_plan_deserialization() {
-        let toml_str = r#"
-            version = "1.0"
-            created_at = "2025-11-19T12:00:00Z"
-            base_path = "/test"
-
-            [[entries]]
-            path = "target"
-            size = 1000000
-            modified = "2025-11-19T12:00:00Z"
-            action = "delete"
-            rule_name = "build_artifact"
-            reason = "Build artifact"
+        let yaml_str = r#"
+version: "1.0"
+created_at: "2025-11-19T12:00:00Z"
+base_path: "/test"
+entries:
+  - path: "target"
+    size: 1000000
+    modified: "2025-11-19T12:00:00Z"
+    action: delete
+    rule_name: build_artifact
+    reason: Build artifact
         "#;
 
-        let plan: CleanupPlan = toml::from_str(toml_str).unwrap();
+        let plan: CleanupPlan = serde_yaml::from_str(yaml_str).unwrap();
 
         assert_eq!(plan.version, "1.0");
         assert_eq!(plan.base_path, PathBuf::from("/test"));

@@ -247,7 +247,7 @@ fn test_plan_generation_1m_entries() {
 
 #[test]
 #[ignore]
-fn test_toml_serialization_performance() {
+fn test_yaml_serialization_performance() {
     use megamaid::models::cleanup_plan::{CleanupAction, CleanupEntry};
 
     println!("\nCreating 100,000 entry plan...");
@@ -265,10 +265,10 @@ fn test_toml_serialization_performance() {
         ));
     }
 
-    println!("Serializing plan to TOML...");
+    println!("Serializing plan to YAML...");
     let start = Instant::now();
 
-    let toml_string = toml::to_string(&plan).unwrap();
+    let yaml_string = serde_yaml::to_string(&plan).unwrap();
 
     let duration = start.elapsed();
 
@@ -278,8 +278,8 @@ fn test_toml_serialization_performance() {
         duration
     );
     println!(
-        "TOML size: {:.2} MB",
-        toml_string.len() as f64 / 1_048_576.0
+        "YAML size: {:.2} MB",
+        yaml_string.len() as f64 / 1_048_576.0
     );
 
     // Target: <5 seconds for 100K entries
@@ -290,10 +290,10 @@ fn test_toml_serialization_performance() {
     );
 
     // Test deserialization too
-    println!("Deserializing plan from TOML...");
+    println!("Deserializing plan from YAML...");
     let start = Instant::now();
 
-    let _: CleanupPlan = toml::from_str(&toml_string).unwrap();
+    let _: CleanupPlan = serde_yaml::from_str(&yaml_string).unwrap();
 
     let duration = start.elapsed();
     println!("Deserialized in {:?}", duration);

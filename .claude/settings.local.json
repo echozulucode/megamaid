@@ -6,7 +6,12 @@
       "Bash(cargo build:*)",
       "Bash(cargo run:*)",
       "Bash(cargo fmt:*)",
-      "Bash(cargo clippy:*)"
+      "Bash(cargo clippy:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(if [ -f \"debug-plan.toml\" ])",
+      "Bash(then rm \"debug-plan.toml\")",
+      "Bash(else echo \"No debug-plan.toml found\")",
+      "Bash(fi)"
     ],
     "deny": [],
     "ask": []

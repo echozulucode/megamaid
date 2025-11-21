@@ -23,7 +23,7 @@ pub enum Commands {
         path: PathBuf,
 
         /// Output plan file path
-        #[arg(short, long, value_name = "FILE", default_value = "cleanup-plan.toml")]
+        #[arg(short, long, value_name = "FILE", default_value = "cleanup-plan.yaml")]
         output: PathBuf,
 
         /// Maximum directory depth to scan
@@ -59,7 +59,7 @@ mod tests {
         match cli.command {
             Commands::Scan { path, output, .. } => {
                 assert_eq!(path, PathBuf::from("/test/path"));
-                assert_eq!(output, PathBuf::from("cleanup-plan.toml"));
+                assert_eq!(output, PathBuf::from("cleanup-plan.yaml"));
             }
             _ => panic!("Expected Scan command"),
         }
@@ -72,7 +72,7 @@ mod tests {
             "scan",
             "/test",
             "--output",
-            "my-plan.toml",
+            "my-plan.yaml",
             "--max-depth",
             "5",
             "--large-file-threshold",
@@ -89,7 +89,7 @@ mod tests {
                 ..
             } => {
                 assert_eq!(path, PathBuf::from("/test"));
-                assert_eq!(output, PathBuf::from("my-plan.toml"));
+                assert_eq!(output, PathBuf::from("my-plan.yaml"));
                 assert_eq!(max_depth, Some(5));
                 assert_eq!(large_file_threshold, 200);
             }
@@ -99,12 +99,12 @@ mod tests {
 
     #[test]
     fn test_cli_parsing_stats_command() {
-        let args = vec!["megamaid", "stats", "plan.toml"];
+        let args = vec!["megamaid", "stats", "plan.yaml"];
         let cli = Cli::try_parse_from(args).unwrap();
 
         match cli.command {
             Commands::Stats { plan } => {
-                assert_eq!(plan, PathBuf::from("plan.toml"));
+                assert_eq!(plan, PathBuf::from("plan.yaml"));
             }
             _ => panic!("Expected Stats command"),
         }

@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Megamaid** is a high-performance storage analysis and cleanup tool built with Rust and Tauri, targeting Windows 11 (with future Linux support). The tool scans directories to identify cleanup candidates (build artifacts, large files), generates human-editable TOML cleanup plans, and executes safe deletions with drift detection.
+**Megamaid** is a high-performance storage analysis and cleanup tool built with Rust and Tauri, targeting Windows 11 (with future Linux support). The tool scans directories to identify cleanup candidates (build artifacts, large files), generates human-editable YAML cleanup plans, and executes safe deletions with drift detection.
 
 ## Development Philosophy
 
 This project prioritizes:
 
-- **Safety first**: All deletions require user review via TOML plans with drift detection before execution
+- **Safety first**: All deletions require user review via YAML plans with drift detection before execution
 - **Performance**: Target is scanning 1M+ files in <5 minutes on SSD, with <100MB memory usage for 100K files
 - **Test-driven development**: >85% code coverage requirement with comprehensive unit, integration, E2E, and property-based tests
 - **Cross-platform abstractions**: OS-specific code isolated behind traits/modules for Windows/Linux compatibility
@@ -35,7 +35,7 @@ src/
 │   ├── rules.rs     # DetectionRule trait, SizeThresholdRule, BuildArtifactRule
 │   ├── engine.rs    # DetectionEngine with rule orchestration
 │   └── mod.rs
-├── planner/         # TOML plan generation
+├── planner/         # YAML plan generation
 │   ├── generator.rs # PlanGenerator - converts detections to plans
 │   ├── writer.rs    # PlanWriter - atomic file I/O with validation
 │   └── mod.rs
@@ -58,7 +58,7 @@ User Input → Scanner → FileEntry[]
                 ↓
           Planner → CleanupPlan
                 ↓
-          TOML File → User Review → (Milestone 2: Execution)
+          YAML File → User Review → (Milestone 2: Execution)
 ```
 
 ### Detection Rule System
@@ -82,7 +82,7 @@ Windows-specific code (NTFS optimizations, Recycle Bin, file IDs) will be isolat
 
 - **walkdir**: Directory traversal (will upgrade to parallel jwalk or ignore crate)
 - **rayon**: Parallel processing (Milestone 3+)
-- **toml**: Serialization for cleanup plans
+- **serde_yaml**: Serialization for cleanup plans
 - **clap**: CLI argument parsing
 - **indicatif**: Progress bars
 - **tempfile**: Test fixtures
@@ -176,7 +176,7 @@ cargo bench
 - Scan 1M files in <5 minutes (SSD)
 - Memory usage <100MB for 100K file scan
 - Plan generation <30s for 1M entries
-- TOML serialization <5s for 100K entries
+- YAML serialization <5s for 100K entries
 
 **Optimization Notes:**
 
@@ -194,7 +194,7 @@ All phases of Milestone 1 have been successfully implemented:
 1. ✅ **Phase 1.1 - Core Data Models**
 
    - FileEntry, CleanupPlan, CleanupEntry, CleanupAction
-   - TOML serialization/deserialization
+   - YAML serialization/deserialization
    - 8 unit tests
 
 2. ✅ **Phase 1.2 - File Traversal**
@@ -210,7 +210,7 @@ All phases of Milestone 1 have been successfully implemented:
    - DetectionEngine with rule orchestration
    - 20 unit tests
 
-4. ✅ **Phase 1.4 - TOML Plan Generation**
+4. ✅ **Phase 1.4 - YAML Plan Generation**
 
    - PlanGenerator with path relativization
    - PlanWriter with atomic file operations
@@ -228,12 +228,14 @@ Refer to `docs/plan-001-milestone1-implementation.md` for detailed phase breakdo
 
 ## Critical Design Decisions
 
-### Why TOML for Plans?
+### Why YAML for Plans?
 
 - Human-editable (users manually review/modify before deletion)
-- Structured format prevents parsing ambiguity
-- Native Rust support via `toml` crate
+- Compact and readable format (60% smaller than TOML)
+- Supports comments for user annotations
+- Native Rust support via `serde_yaml` crate
 - Clear syntax for non-technical users
+- Fast parsing performance for large datasets
 
 ### Why Trait-based Detection Rules?
 
@@ -246,7 +248,7 @@ Refer to `docs/plan-001-milestone1-implementation.md` for detailed phase breakdo
 ```rust
 // Write to temp file, then rename (atomic on POSIX/Windows)
 let temp_path = output_path.with_extension("tmp");
-File::create(&temp_path)?.write_all(toml.as_bytes())?;
+File::create(&temp_path)?.write_all(yaml.as_bytes())?;
 file.sync_all()?; // Ensure disk persistence
 std::fs::rename(temp_path, output_path)?;
 ```
@@ -299,7 +301,7 @@ Case-sensitive matching. Directories only (not files named "target").
 megamaid scan /path/to/directory
 
 # Custom output file
-megamaid scan /path/to/directory --output my-plan.toml
+megamaid scan /path/to/directory --output my-plan.yaml
 
 # Limit scan depth
 megamaid scan /path/to/directory --max-depth 5
@@ -315,7 +317,7 @@ megamaid scan /path/to/directory --skip-hidden
 
 ```bash
 # View plan statistics
-megamaid stats cleanup-plan.toml
+megamaid stats cleanup-plan.yaml
 ```
 
 Output includes:
