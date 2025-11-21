@@ -207,7 +207,7 @@ pub enum VerificationError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{CleanupEntry, EntryType, FileEntry};
+    use crate::models::CleanupEntry;
     use chrono::Utc;
     use std::fs;
     use tempfile::TempDir;

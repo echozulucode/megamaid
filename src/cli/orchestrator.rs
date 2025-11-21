@@ -2,7 +2,10 @@
 
 use crate::cli::Commands;
 use crate::detector::{DetectionEngine, ScanContext, SizeThresholdRule};
-use crate::executor::{ExecutionConfig, ExecutionEngine, ExecutionMode};
+use crate::executor::{
+    ExecutionConfig, ExecutionEngine, ExecutionMode, TransactionLogger, TransactionOptions,
+    TransactionStatus,
+};
 use crate::planner::{PlanGenerator, PlanWriter};
 use crate::scanner::{FileScanner, ScanConfig};
 use crate::verifier::{DriftReporter, VerificationConfig, VerificationEngine};
@@ -36,6 +39,7 @@ pub fn run_command(command: Commands) -> Result<()> {
             recycle_bin,
             fail_fast,
             skip_verify,
+            log_file,
         } => run_execute(
             &plan,
             dry_run,
@@ -44,6 +48,7 @@ pub fn run_command(command: Commands) -> Result<()> {
             recycle_bin,
             fail_fast,
             skip_verify,
+            log_file,
         ),
     }
 }
@@ -224,6 +229,7 @@ fn run_execute(
     recycle_bin: bool,
     fail_fast: bool,
     skip_verify: bool,
+    log_file: PathBuf,
 ) -> Result<()> {
     println!("🗑️  Executing cleanup plan: {}", plan_path.display());
     println!();
@@ -298,6 +304,18 @@ fn run_execute(
     println!("Processing {} deletion(s)...", delete_count);
     println!();
 
+    // Create transaction logger
+    let options = TransactionOptions {
+        dry_run,
+        backup_dir: backup_dir.clone(),
+        use_recycle_bin: recycle_bin,
+        fail_fast,
+    };
+    let mut logger = TransactionLogger::new(plan_path, log_file.clone(), options);
+
+    println!("📋 Transaction ID: {}", logger.execution_id());
+    println!();
+
     // Execute
     let executor = ExecutionEngine::new(config);
     let progress = ProgressBar::new(delete_count as u64);
@@ -310,8 +328,9 @@ fn run_execute(
 
     let result = executor.execute(&plan)?;
 
-    // Update progress for each operation
+    // Log all operations
     for op in &result.operations {
+        logger.log_operation(op);
         progress.inc(1);
         if op.status == crate::executor::OperationStatus::Failed {
             progress.set_message(format!("Failed: {}", op.path.display()));
@@ -321,8 +340,18 @@ fn run_execute(
     progress.finish_with_message("Done");
     println!();
 
+    // Finalize transaction log
+    let status = if result.summary.failed > 0 {
+        TransactionStatus::Failed
+    } else {
+        TransactionStatus::Completed
+    };
+    logger.finalize(&result, status)?;
+
     // Print summary
     print_execution_summary(&result.summary, dry_run);
+    println!();
+    println!("📄 Transaction log: {}", log_file.display());
 
     // Exit with error if any failures
     if result.summary.failed > 0 {

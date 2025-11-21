@@ -94,6 +94,10 @@ pub enum Commands {
         /// Skip verification before execution
         #[arg(long)]
         skip_verify: bool,
+
+        /// Transaction log file path
+        #[arg(long, value_name = "FILE", default_value = "execution-log.yaml")]
+        log_file: PathBuf,
     },
 }
 
@@ -234,6 +238,7 @@ mod tests {
                 recycle_bin,
                 fail_fast,
                 skip_verify,
+                log_file,
             } => {
                 assert_eq!(plan, PathBuf::from("plan.yaml"));
                 assert!(!dry_run);
@@ -242,6 +247,7 @@ mod tests {
                 assert!(!recycle_bin);
                 assert!(!fail_fast);
                 assert!(!skip_verify);
+                assert_eq!(log_file, PathBuf::from("execution-log.yaml"));
             }
             _ => panic!("Expected Execute command"),
         }

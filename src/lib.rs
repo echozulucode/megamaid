@@ -102,5 +102,6 @@ pub use verifier::{
 };
 pub use executor::{
     ExecutionConfig, ExecutionEngine, ExecutionError, ExecutionMode, ExecutionResult,
-    ExecutionSummary, OperationAction, OperationResult, OperationStatus,
+    ExecutionSummary, ExecutionSummaryLog, LoggedOperation, OperationAction, OperationResult,
+    OperationStatus, TransactionLog, TransactionLogger, TransactionOptions, TransactionStatus,
 };

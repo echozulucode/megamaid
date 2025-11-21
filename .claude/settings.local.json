@@ -29,7 +29,8 @@
       "Bash(else echo \"✓ Original removed\")",
       "Bash(if [ -d \"test_delete/target\" ])",
       "Bash(then echo \"✗ Directory still exists\")",
-      "Bash(else echo \"✓ Directory deleted\")"
+      "Bash(else echo \"✓ Directory deleted\")",
+      "Bash(./target/release/megamaid scan:*)"
     ],
     "deny": [],
     "ask": []
