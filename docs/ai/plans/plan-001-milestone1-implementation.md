@@ -2,14 +2,20 @@
 
 ## ✅ STATUS: COMPLETED
 
-**Completion Date**: November 19, 2025
+**Completion Date**: November 21, 2025 (Updated)
 **Total Test Count**: 87 tests passing
 **Code Quality**: All clippy warnings resolved, formatting validated
 **Documentation**: Complete (README.md, ARCHITECTURE.md, inline docs)
 **CI/CD**: GitHub Actions workflow configured and ready
 
+**Recent Improvements (Nov 21, 2025)**:
+- ✅ Migrated from TOML to YAML format (60% smaller files, faster parsing)
+- ✅ Fixed directory size calculation (directories now show actual recursive size)
+- ✅ Implemented smart filtering (child entries excluded when parent marked for deletion)
+- ✅ Fixed rule priority (build artifacts detected before size checks)
+
 ## Overview
-**Goal**: Build a CLI prototype that recursively scans directories, identifies cleanup candidates, and generates a human-editable TOML plan file.
+**Goal**: Build a CLI prototype that recursively scans directories, identifies cleanup candidates, and generates a human-editable YAML plan file.
 
 **Success Criteria**: ✅ ALL MET
 - ✅ Scan directories with 1M+ files in reasonable time (<5 minutes on SSD)

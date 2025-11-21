@@ -63,11 +63,14 @@ fn run_scan(
     println!();
 
     // Configure detection engine
+    // NOTE: Rule order matters! First match wins.
+    // Build artifacts should be detected before size checks so they're always marked
+    // for deletion (and their children filtered out), regardless of size.
     let mut engine = DetectionEngine::empty();
+    engine.add_rule(Box::new(crate::detector::BuildArtifactRule::default()));
     engine.add_rule(Box::new(SizeThresholdRule {
         threshold_bytes: large_file_threshold * 1_048_576,
     }));
-    engine.add_rule(Box::new(crate::detector::BuildArtifactRule::default()));
 
     // Run detection
     let spinner = ProgressBar::new_spinner();
