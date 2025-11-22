@@ -150,6 +150,11 @@ impl ParallelScanner {
         let paths: Vec<_> = walker
             .into_iter()
             .filter_entry(|e| {
+                // Never filter the root directory (depth 0)
+                if e.depth() == 0 {
+                    return true;
+                }
+
                 if self.config.skip_hidden {
                     !is_hidden(e)
                 } else {
