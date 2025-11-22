@@ -556,7 +556,8 @@ mod tests {
 
         assert_eq!(result.summary.successful, 5);
         assert_eq!(result.summary.space_freed, 5000);
-        assert!(result.summary.duration.as_millis() > 0);
+        // Duration should be non-zero (use as_nanos for sub-millisecond precision)
+        assert!(result.summary.duration.as_nanos() > 0);
     }
 
     #[test]
