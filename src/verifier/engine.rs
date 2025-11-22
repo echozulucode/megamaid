@@ -328,7 +328,7 @@ mod tests {
         let verifier = VerificationEngine::new(VerificationConfig::default());
         let result = verifier.verify(&plan).unwrap();
 
-        assert!(result.drifted.len() > 0);
+        assert!(!result.drifted.is_empty());
         assert!(!result.is_safe_to_execute());
     }
 

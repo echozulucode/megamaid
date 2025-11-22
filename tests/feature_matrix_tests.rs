@@ -286,7 +286,7 @@ fn test_custom_size_threshold_with_plan_filtering() {
 
     // Should detect the 150MB file and possibly the parent directory (which contains all files)
     assert!(
-        detections.len() >= 1,
+        !detections.is_empty(),
         "Should detect at least one entry > 100MB"
     );
 
