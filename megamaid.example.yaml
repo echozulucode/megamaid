@@ -1,0 +1,95 @@
+# Megamaid Configuration File
+# This is an example configuration showing all available options
+# Copy to megamaid.yaml and customize as needed
+
+# Scanner Configuration
+scanner:
+  # Maximum directory depth to scan (null = unlimited)
+  max_depth: null
+
+  # Skip hidden files and directories
+  skip_hidden: true
+
+  # Follow symbolic links
+  follow_symlinks: false
+
+  # Number of threads for parallel scanning (0 = auto-detect)
+  thread_count: 0
+
+# Detector Configuration
+detector:
+  # Built-in rules configuration
+  rules:
+    # Size threshold rule - flag files larger than this size
+    size_threshold:
+      enabled: true
+      threshold_mb: 100
+      action: review  # delete, review, or keep
+
+    # Build artifact detection
+    build_artifacts:
+      enabled: true
+      action: delete
+      # Custom patterns (in addition to defaults)
+      custom_patterns:
+        - ".gradle/"
+        - ".idea/"
+        - "*.pyc"
+
+  # Custom detection rules
+  custom_rules:
+    # Example: Flag old log files
+    - name: "old_logs"
+      description: "Log files older than 30 days"
+      pattern: "*.log"
+      min_age_days: 30
+      action: delete
+
+    # Example: Flag large media files
+    - name: "large_media"
+      description: "Large video files"
+      extensions: [".mp4", ".avi", ".mkv"]
+      min_size_mb: 500
+      action: review
+
+# Executor Configuration
+executor:
+  # Enable parallel execution by default
+  parallel: false
+
+  # Batch size for parallel processing
+  batch_size: 100
+
+  # Default execution mode: dry_run, interactive, or batch
+  default_mode: dry_run
+
+  # Stop on first error
+  fail_fast: false
+
+  # Use recycle bin by default
+  use_recycle_bin: false
+
+  # Default backup directory (null = no backup)
+  backup_dir: null
+
+# Output Configuration
+output:
+  # Default cleanup plan filename
+  plan_file: "cleanup-plan.yaml"
+
+  # Default transaction log filename
+  log_file: "execution-log.yaml"
+
+  # Default drift report filename
+  drift_report: "drift-report.txt"
+
+# Verification Configuration
+verifier:
+  # Check modification time during verification
+  check_mtime: true
+
+  # Check file size during verification
+  check_size: true
+
+  # Stop verification on first drift detection
+  fail_fast: false

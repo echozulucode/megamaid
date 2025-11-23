@@ -1,7 +1,10 @@
 //! Execution engine for safe deletion operations.
 
 use crate::models::{CleanupAction, CleanupEntry, CleanupPlan};
+use crate::scanner::progress::AdvancedProgress;
+use rayon::prelude::*;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 use std::time::{Instant, SystemTime};
 
 /// Configuration for execution behavior.
@@ -11,6 +14,10 @@ pub struct ExecutionConfig {
     pub backup_dir: Option<PathBuf>,
     pub fail_fast: bool,
     pub use_recycle_bin: bool,
+    /// Enable parallel deletion (not compatible with Interactive mode)
+    pub parallel: bool,
+    /// Batch size for parallel processing (default: 100)
+    pub batch_size: usize,
 }
 
 impl Default for ExecutionConfig {
@@ -20,6 +27,8 @@ impl Default for ExecutionConfig {
             backup_dir: None,
             fail_fast: false,
             use_recycle_bin: false,
+            parallel: false,
+            batch_size: 100,
         }
     }
 }
@@ -38,6 +47,7 @@ pub enum ExecutionMode {
 /// Engine for executing cleanup plans.
 pub struct ExecutionEngine {
     config: ExecutionConfig,
+    progress: Arc<AdvancedProgress>,
 }
 
 /// Result of execution operation.
@@ -90,20 +100,49 @@ pub enum OperationStatus {
 impl ExecutionEngine {
     /// Create a new execution engine with the given configuration.
     pub fn new(config: ExecutionConfig) -> Self {
-        Self { config }
+        Self {
+            config,
+            progress: Arc::new(AdvancedProgress::new()),
+        }
+    }
+
+    /// Get a reference to the progress tracker.
+    pub fn progress(&self) -> &AdvancedProgress {
+        &self.progress
     }
 
     /// Execute a cleanup plan.
     pub fn execute(&self, plan: &CleanupPlan) -> Result<ExecutionResult, ExecutionError> {
+        // Validate: parallel mode not compatible with interactive
+        if self.config.parallel && self.config.mode == ExecutionMode::Interactive {
+            return Err(ExecutionError::InvalidConfiguration(
+                "Parallel execution is not compatible with Interactive mode".to_string(),
+            ));
+        }
+
+        // Dispatch to parallel or sequential execution
+        if self.config.parallel {
+            self.execute_parallel(plan)
+        } else {
+            self.execute_sequential(plan)
+        }
+    }
+
+    /// Execute plan sequentially (original implementation).
+    fn execute_sequential(&self, plan: &CleanupPlan) -> Result<ExecutionResult, ExecutionError> {
         let start_time = Instant::now();
         let mut operations = Vec::new();
 
-        for entry in &plan.entries {
-            // Only process Delete actions
-            if entry.action != CleanupAction::Delete {
-                continue;
-            }
+        // Filter entries to process
+        let entries_to_process: Vec<_> = plan
+            .entries
+            .iter()
+            .filter(|e| e.action == CleanupAction::Delete)
+            .collect();
 
+        self.progress.set_total(entries_to_process.len() as u64);
+
+        for entry in entries_to_process {
             let full_path = plan.base_path.join(&entry.path);
 
             // Interactive mode: prompt user
@@ -121,6 +160,7 @@ impl ExecutionEngine {
                             error: None,
                             timestamp: SystemTime::now(),
                         });
+                        self.progress.increment();
                         continue;
                     }
                     UserChoice::Abort => {
@@ -131,6 +171,7 @@ impl ExecutionEngine {
 
             // Execute operation
             let result = self.execute_single(&full_path, entry);
+            self.progress.increment();
 
             // Fail-fast check
             if self.config.fail_fast && result.status == OperationStatus::Failed {
@@ -142,6 +183,71 @@ impl ExecutionEngine {
         }
 
         let duration = start_time.elapsed();
+        let summary = self.compute_summary(&operations, duration);
+
+        Ok(ExecutionResult {
+            operations,
+            summary,
+        })
+    }
+
+    /// Execute plan in parallel using rayon.
+    fn execute_parallel(&self, plan: &CleanupPlan) -> Result<ExecutionResult, ExecutionError> {
+        let start_time = Instant::now();
+
+        // Filter entries to process
+        let entries_to_process: Vec<_> = plan
+            .entries
+            .iter()
+            .filter(|e| e.action == CleanupAction::Delete)
+            .collect();
+
+        self.progress.set_total(entries_to_process.len() as u64);
+
+        // Shared state for collecting results
+        let results = Arc::new(Mutex::new(Vec::new()));
+        let should_abort = Arc::new(Mutex::new(false));
+
+        // Process in batches for better error handling
+        let batches: Vec<_> = entries_to_process.chunks(self.config.batch_size).collect();
+
+        for batch in batches {
+            // Check abort signal
+            if *should_abort.lock().unwrap() {
+                break;
+            }
+
+            // Process batch in parallel
+            let batch_results: Vec<OperationResult> = batch
+                .par_iter()
+                .map(|entry| {
+                    let full_path = plan.base_path.join(&entry.path);
+                    let result = self.execute_single(&full_path, entry);
+                    self.progress.increment();
+                    result
+                })
+                .collect();
+
+            // Collect results
+            {
+                let mut results_guard = results.lock().unwrap();
+                results_guard.extend(batch_results);
+
+                // Check for fail-fast condition
+                if self.config.fail_fast
+                    && results_guard
+                        .iter()
+                        .any(|r| r.status == OperationStatus::Failed)
+                {
+                    *should_abort.lock().unwrap() = true;
+                }
+            }
+        }
+
+        let duration = start_time.elapsed();
+        let operations = Arc::try_unwrap(results)
+            .map(|mutex| mutex.into_inner().unwrap())
+            .unwrap_or_else(|arc| arc.lock().unwrap().clone());
         let summary = self.compute_summary(&operations, duration);
 
         Ok(ExecutionResult {
@@ -299,6 +405,9 @@ pub enum ExecutionError {
 
     #[error("User aborted execution")]
     UserAborted,
+
+    #[error("Invalid configuration: {0}")]
+    InvalidConfiguration(String),
 }
 
 #[cfg(test)]
@@ -587,5 +696,197 @@ mod tests {
         assert_eq!(result.summary.failed, 1);
         assert_eq!(result.summary.successful, 1);
         assert_eq!(result.operations.len(), 2);
+    }
+
+    #[test]
+    fn test_parallel_execution() {
+        let temp = TempDir::new().unwrap();
+
+        // Create multiple files
+        for i in 0..20 {
+            fs::write(temp.path().join(format!("file{}.txt", i)), "content").unwrap();
+        }
+
+        let mut entries = Vec::new();
+        for i in 0..20 {
+            entries.push(create_cleanup_entry(
+                &format!("file{}.txt", i),
+                7,
+                CleanupAction::Delete,
+            ));
+        }
+
+        let plan = create_test_plan(temp.path(), entries);
+
+        let config = ExecutionConfig {
+            mode: ExecutionMode::Batch,
+            parallel: true,
+            batch_size: 5,
+            ..Default::default()
+        };
+
+        let executor = ExecutionEngine::new(config);
+        let result = executor.execute(&plan).unwrap();
+
+        assert_eq!(result.summary.successful, 20);
+        assert_eq!(result.summary.failed, 0);
+        assert_eq!(result.summary.space_freed, 140);
+
+        // Verify all files deleted
+        for i in 0..20 {
+            assert!(
+                !temp.path().join(format!("file{}.txt", i)).exists(),
+                "File {} should be deleted",
+                i
+            );
+        }
+    }
+
+    #[test]
+    fn test_parallel_with_interactive_mode_rejected() {
+        let temp = TempDir::new().unwrap();
+        let entry = create_cleanup_entry("test.txt", 7, CleanupAction::Delete);
+        let plan = create_test_plan(temp.path(), vec![entry]);
+
+        let config = ExecutionConfig {
+            mode: ExecutionMode::Interactive,
+            parallel: true,
+            ..Default::default()
+        };
+
+        let executor = ExecutionEngine::new(config);
+        let result = executor.execute(&plan);
+
+        assert!(result.is_err());
+        match result {
+            Err(ExecutionError::InvalidConfiguration(_)) => {
+                // Expected
+            }
+            _ => panic!("Expected InvalidConfiguration error"),
+        }
+    }
+
+    #[test]
+    fn test_parallel_fail_fast() {
+        let temp = TempDir::new().unwrap();
+
+        // Create some files, leave some nonexistent
+        for i in 0..5 {
+            fs::write(temp.path().join(format!("file{}.txt", i)), "content").unwrap();
+        }
+
+        let mut entries = Vec::new();
+        // Mix of existing and non-existing files
+        for i in 0..10 {
+            entries.push(create_cleanup_entry(
+                &format!("file{}.txt", i),
+                7,
+                CleanupAction::Delete,
+            ));
+        }
+
+        let plan = create_test_plan(temp.path(), entries);
+
+        let config = ExecutionConfig {
+            mode: ExecutionMode::Batch,
+            parallel: true,
+            fail_fast: true,
+            batch_size: 3,
+            ..Default::default()
+        };
+
+        let executor = ExecutionEngine::new(config);
+        let result = executor.execute(&plan).unwrap();
+
+        // With fail-fast, should stop after first batch with errors
+        assert!(result.summary.failed > 0);
+        // Not all operations should have been processed
+        assert!(result.operations.len() < 10);
+    }
+
+    #[test]
+    fn test_parallel_dry_run() {
+        let temp = TempDir::new().unwrap();
+
+        // Create files
+        for i in 0..10 {
+            fs::write(temp.path().join(format!("file{}.txt", i)), "content").unwrap();
+        }
+
+        let mut entries = Vec::new();
+        for i in 0..10 {
+            entries.push(create_cleanup_entry(
+                &format!("file{}.txt", i),
+                7,
+                CleanupAction::Delete,
+            ));
+        }
+
+        let plan = create_test_plan(temp.path(), entries);
+
+        let config = ExecutionConfig {
+            mode: ExecutionMode::DryRun,
+            parallel: true,
+            batch_size: 5,
+            ..Default::default()
+        };
+
+        let executor = ExecutionEngine::new(config);
+        let result = executor.execute(&plan).unwrap();
+
+        // All should be dry-run status
+        assert_eq!(result.operations.len(), 10);
+        assert!(result.operations.iter().all(|r| r.status == OperationStatus::DryRun));
+        assert_eq!(result.summary.space_freed, 70);
+
+        // Files should still exist
+        for i in 0..10 {
+            assert!(
+                temp.path().join(format!("file{}.txt", i)).exists(),
+                "File {} should still exist in dry-run",
+                i
+            );
+        }
+    }
+
+    #[test]
+    fn test_parallel_progress_tracking() {
+        let temp = TempDir::new().unwrap();
+
+        // Create files
+        for i in 0..50 {
+            fs::write(temp.path().join(format!("file{}.txt", i)), "content").unwrap();
+        }
+
+        let mut entries = Vec::new();
+        for i in 0..50 {
+            entries.push(create_cleanup_entry(
+                &format!("file{}.txt", i),
+                7,
+                CleanupAction::Delete,
+            ));
+        }
+
+        let plan = create_test_plan(temp.path(), entries);
+
+        let config = ExecutionConfig {
+            mode: ExecutionMode::Batch,
+            parallel: true,
+            batch_size: 10,
+            ..Default::default()
+        };
+
+        let executor = ExecutionEngine::new(config);
+
+        // Check initial progress state
+        assert_eq!(executor.progress().get_total(), 0);
+        assert_eq!(executor.progress().get_processed(), 0);
+
+        let result = executor.execute(&plan).unwrap();
+
+        // After execution, progress should be complete
+        assert_eq!(executor.progress().get_total(), 50);
+        assert_eq!(executor.progress().get_processed(), 50);
+        assert_eq!(result.summary.successful, 50);
     }
 }

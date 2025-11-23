@@ -9,6 +9,10 @@ use std::path::PathBuf;
 #[command(about = "Analyzes directories for cleanup candidates and generates actionable plans", long_about = None)]
 #[command(version)]
 pub struct Cli {
+    /// Configuration file path (overrides defaults)
+    #[arg(short, long, value_name = "FILE", global = true)]
+    pub config: Option<PathBuf>,
+
     #[command(subcommand)]
     pub command: Commands,
 }
@@ -98,6 +102,14 @@ pub enum Commands {
         /// Transaction log file path
         #[arg(long, value_name = "FILE", default_value = "execution-log.yaml")]
         log_file: PathBuf,
+
+        /// Enable parallel execution (not compatible with interactive mode)
+        #[arg(long)]
+        parallel: bool,
+
+        /// Batch size for parallel processing
+        #[arg(long, default_value = "100")]
+        batch_size: usize,
     },
 }
 
@@ -249,6 +261,8 @@ mod tests {
                 fail_fast,
                 skip_verify,
                 log_file,
+                parallel,
+                batch_size,
             } => {
                 assert_eq!(plan, PathBuf::from("plan.yaml"));
                 assert!(!dry_run);
@@ -258,6 +272,8 @@ mod tests {
                 assert!(!fail_fast);
                 assert!(!skip_verify);
                 assert_eq!(log_file, PathBuf::from("execution-log.yaml"));
+                assert!(!parallel);
+                assert_eq!(batch_size, 100);
             }
             _ => panic!("Expected Execute command"),
         }
