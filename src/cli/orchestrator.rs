@@ -463,8 +463,9 @@ mod tests {
         fs::create_dir_all(temp.path().join("target")).unwrap();
 
         let output_path = temp.path().join("plan.yaml");
+        let config = MegamaidConfig::default();
 
-        let result = run_scan(temp.path(), &output_path, None, true, 100);
+        let result = run_scan(&config, temp.path(), &output_path, None, true, 100);
 
         assert!(result.is_ok());
         assert!(output_path.exists());
@@ -473,7 +474,8 @@ mod tests {
     #[test]
     fn test_run_scan_nonexistent_path() {
         let output = PathBuf::from("plan.yaml");
-        let result = run_scan(Path::new("/nonexistent/path"), &output, None, true, 100);
+        let config = MegamaidConfig::default();
+        let result = run_scan(&config, Path::new("/nonexistent/path"), &output, None, true, 100);
 
         assert!(result.is_err());
     }

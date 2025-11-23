@@ -326,3 +326,129 @@ fn test_scan_small_dataset() {
     assert!(results.len() >= 100);
     assert!(duration.as_secs() < 1); // Should be near-instant
 }
+
+#[test]
+fn test_parallel_scan_performance() {
+    // Test parallel scanning performance on realistic dataset
+    let temp = TempDir::new().unwrap();
+    create_test_files(&temp, 5_000);
+
+    let start = Instant::now();
+    let scanner = megamaid::scanner::ParallelScanner::new(megamaid::scanner::parallel::ScannerConfig {
+        max_depth: None,
+        skip_hidden: true,
+        follow_symlinks: false,
+        thread_count: 4,
+    });
+    let results = scanner.scan(temp.path()).unwrap();
+    let duration = start.elapsed();
+
+    println!("Parallel scanned {} files in {:?}", results.len(), duration);
+    println!("Throughput: {:.0} files/sec", results.len() as f64 / duration.as_secs_f64());
+
+    assert!(results.len() >= 5_000);
+    // Should be significantly faster with parallelization
+    assert!(duration.as_secs() < 5, "Should scan 5K files in <5s");
+}
+
+#[test]
+fn test_complete_pipeline_performance() {
+    // Test the entire workflow: scan -> detect -> plan -> verify
+    use megamaid::detector::BuildArtifactRule;
+    use megamaid::detector::rules::SizeThresholdRule;
+    use megamaid::verifier::{VerificationConfig, VerificationEngine};
+
+    let temp = TempDir::new().unwrap();
+
+    // Create realistic project structure
+    fs::create_dir_all(temp.path().join("src")).unwrap();
+    fs::create_dir_all(temp.path().join("target/debug")).unwrap();
+    fs::create_dir_all(temp.path().join("node_modules/package1")).unwrap();
+
+    // Create many files
+    for i in 0..1_000 {
+        fs::write(temp.path().join(format!("src/file_{}.rs", i)), "fn main() {}").unwrap();
+    }
+    for i in 0..500 {
+        fs::write(
+            temp.path().join(format!("target/debug/artifact_{}.o", i)),
+            vec![0u8; 1000],
+        )
+        .unwrap();
+    }
+
+    let total_start = Instant::now();
+
+    // Step 1: Scan
+    let scan_start = Instant::now();
+    let scanner = FileScanner::new(ScanConfig::default());
+    let entries = scanner.scan(temp.path()).unwrap();
+    let scan_duration = scan_start.elapsed();
+    println!("Scan: {:?} ({} entries)", scan_duration, entries.len());
+
+    // Step 2: Detect
+    let detect_start = Instant::now();
+    let mut engine = DetectionEngine::empty();
+    engine.add_rule(Box::new(BuildArtifactRule::default()));
+    engine.add_rule(Box::new(SizeThresholdRule {
+        threshold_bytes: 100,
+    }));
+    let detections = engine.analyze(&entries, &ScanContext::default());
+    let detect_duration = detect_start.elapsed();
+    println!("Detect: {:?} ({} detections)", detect_duration, detections.len());
+
+    // Step 3: Generate plan
+    let plan_start = Instant::now();
+    let generator = PlanGenerator::new(temp.path().to_path_buf());
+    let plan = generator.generate(detections);
+    let plan_duration = plan_start.elapsed();
+    println!("Plan generation: {:?} ({} entries)", plan_duration, plan.entries.len());
+
+    // Step 4: Verify
+    let verify_start = Instant::now();
+    let verifier = VerificationEngine::new(VerificationConfig::default());
+    let verification = verifier.verify(&plan).unwrap();
+    let verify_duration = verify_start.elapsed();
+    println!("Verify: {:?}", verify_duration);
+
+    let total_duration = total_start.elapsed();
+    println!("Total pipeline: {:?}", total_duration);
+
+    assert!(verification.is_safe_to_execute());
+    assert!(total_duration.as_secs() < 5, "Complete pipeline should finish in <5s");
+}
+
+#[test]
+fn test_memory_efficiency() {
+    // Test memory efficiency with moderate dataset
+    // Creates 5,000 entries and verifies memory usage stays reasonable
+
+    let entries = create_mock_entries(5_000);
+
+    // Run detection
+    let mut engine = DetectionEngine::empty();
+    engine.add_rule(Box::new(megamaid::detector::rules::SizeThresholdRule {
+        threshold_bytes: 1_048_576, // 1 MB
+    }));
+
+    let detections = engine.analyze(&entries, &ScanContext::default());
+
+    // Generate plan
+    let generator = PlanGenerator::new(PathBuf::from("/test"));
+    let plan = generator.generate(detections);
+
+    // Serialize to YAML
+    let yaml = serde_yaml::to_string(&plan).unwrap();
+
+    // Verify sizes are reasonable
+    let entries_size_estimate = entries.len() * std::mem::size_of::<FileEntry>();
+    let plan_size_estimate = plan.entries.len() * std::mem::size_of::<megamaid::models::CleanupEntry>();
+
+    println!("Entries memory estimate: ~{} KB", entries_size_estimate / 1024);
+    println!("Plan memory estimate: ~{} KB", plan_size_estimate / 1024);
+    println!("YAML size: {} KB", yaml.len() / 1024);
+
+    // For 5K entries, memory should be well under 10MB
+    assert!(entries_size_estimate < 10_000_000, "Entries should use <10MB");
+    assert!(yaml.len() < 5_000_000, "YAML should be <5MB for 5K entries");
+}
