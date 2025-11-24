@@ -30,7 +30,11 @@
       "Bash(if [ -d \"test_delete/target\" ])",
       "Bash(then echo \"✗ Directory still exists\")",
       "Bash(else echo \"✓ Directory deleted\")",
-      "Bash(./target/release/megamaid scan:*)"
+      "Bash(./target/release/megamaid scan:*)",
+      "Bash(node --version:*)",
+      "Bash(npm:*)",
+      "Bash(cargo install:*)",
+      "Bash(npx tailwindcss:*)"
     ],
     "deny": [],
     "ask": []

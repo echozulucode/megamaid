@@ -1,12 +1,13 @@
 //! Verification engine for detecting filesystem drift.
 
 use crate::models::{CleanupAction, CleanupPlan};
+use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 use walkdir::WalkDir;
 
 /// Configuration for verification behavior.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VerificationConfig {
     /// Check modification times
     pub check_mtime: bool,
@@ -32,7 +33,7 @@ pub struct VerificationEngine {
 }
 
 /// Result of verification operation.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct VerificationResult {
     pub total_entries: usize,
     pub verified: usize,
@@ -56,7 +57,7 @@ impl VerificationResult {
 }
 
 /// Details of a detected drift.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DriftDetection {
     pub path: PathBuf,
     pub drift_type: DriftType,
@@ -65,7 +66,7 @@ pub struct DriftDetection {
 }
 
 /// Types of drift that can be detected.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DriftType {
     SizeMismatch,
     ModificationTimeMismatch,

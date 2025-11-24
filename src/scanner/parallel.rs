@@ -3,12 +3,13 @@
 use crate::models::{EntryType, FileEntry};
 use crate::scanner::progress::AdvancedProgress;
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use walkdir::WalkDir;
 
 /// Configuration for the parallel scanner.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScannerConfig {
     /// Maximum directory depth to scan
     pub max_depth: Option<usize>,

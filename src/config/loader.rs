@@ -16,14 +16,13 @@ pub fn load_config<P: AsRef<Path>>(path: P) -> Result<MegamaidConfig> {
     let content = fs::read_to_string(path)
         .context(format!("Failed to read config file: {}", path.display()))?;
 
-    parse_config(&content)
-        .context(format!("Failed to parse config file: {}", path.display()))
+    parse_config(&content).context(format!("Failed to parse config file: {}", path.display()))
 }
 
 /// Parses configuration from a YAML string.
 pub fn parse_config(yaml: &str) -> Result<MegamaidConfig> {
-    let config: MegamaidConfig = serde_yaml::from_str(yaml)
-        .context("Invalid YAML syntax or structure")?;
+    let config: MegamaidConfig =
+        serde_yaml::from_str(yaml).context("Invalid YAML syntax or structure")?;
 
     Ok(config)
 }
@@ -51,11 +50,9 @@ pub fn load_default_config() -> Result<Option<MegamaidConfig>> {
 pub fn write_config<P: AsRef<Path>>(config: &MegamaidConfig, path: P) -> Result<()> {
     let path = path.as_ref();
 
-    let yaml = serde_yaml::to_string(config)
-        .context("Failed to serialize configuration")?;
+    let yaml = serde_yaml::to_string(config).context("Failed to serialize configuration")?;
 
-    fs::write(path, yaml)
-        .context(format!("Failed to write config to: {}", path.display()))?;
+    fs::write(path, yaml).context(format!("Failed to write config to: {}", path.display()))?;
 
     Ok(())
 }

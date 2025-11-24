@@ -232,7 +232,10 @@ impl From<ExecutionModeConfig> for crate::executor::ExecutionMode {
 
 impl ExecutorConfig {
     /// Converts to ExecutionConfig, optionally overriding mode.
-    pub fn to_execution_config(&self, mode_override: Option<crate::executor::ExecutionMode>) -> crate::executor::ExecutionConfig {
+    pub fn to_execution_config(
+        &self,
+        mode_override: Option<crate::executor::ExecutionMode>,
+    ) -> crate::executor::ExecutionConfig {
         crate::executor::ExecutionConfig {
             mode: mode_override.unwrap_or_else(|| self.default_mode.clone().into()),
             backup_dir: self.backup_dir.clone(),

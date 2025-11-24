@@ -156,7 +156,7 @@ fn test_config_integration_with_scan() {
     }
 
     let detections = engine.analyze(&entries, &ScanContext::default());
-    assert!(detections.len() >= 1, "Should detect target/ directory");
+    assert!(!detections.is_empty(), "Should detect target/ directory");
 }
 
 #[test]
@@ -185,7 +185,9 @@ fn test_config_integration_with_execution() {
     let plan = generator.generate(detections);
 
     // Execute using config
-    let exec_config = config.executor.to_execution_config(Some(ExecutionMode::DryRun));
+    let exec_config = config
+        .executor
+        .to_execution_config(Some(ExecutionMode::DryRun));
     let executor = ExecutionEngine::new(exec_config);
     let result = executor.execute(&plan).unwrap();
 

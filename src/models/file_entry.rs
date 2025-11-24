@@ -1,10 +1,11 @@
 //! File system entry representation with metadata for drift detection.
 
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::time::SystemTime;
 
 /// Represents a file or directory entry with metadata for cleanup analysis.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FileEntry {
     /// Absolute path to the file or directory
     pub path: PathBuf,
@@ -13,6 +14,7 @@ pub struct FileEntry {
     pub size: u64,
 
     /// Last modification time
+    #[serde(with = "systemtime_serde")]
     pub modified: SystemTime,
 
     /// Type of entry (file or directory)
@@ -23,12 +25,36 @@ pub struct FileEntry {
 }
 
 /// Type of file system entry.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EntryType {
     /// Regular file
     File,
     /// Directory
     Directory,
+}
+
+/// Custom serde module for SystemTime serialization
+mod systemtime_serde {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    pub fn serialize<S>(time: &SystemTime, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let duration = time
+            .duration_since(UNIX_EPOCH)
+            .map_err(serde::ser::Error::custom)?;
+        duration.as_secs().serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<SystemTime, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let secs = u64::deserialize(deserializer)?;
+        Ok(UNIX_EPOCH + std::time::Duration::from_secs(secs))
+    }
 }
 
 impl FileEntry {

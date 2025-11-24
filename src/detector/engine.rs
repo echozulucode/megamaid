@@ -2,6 +2,7 @@
 
 use crate::detector::rules::{BuildArtifactRule, DetectionRule, SizeThresholdRule};
 use crate::models::FileEntry;
+use serde::{Deserialize, Serialize};
 
 /// Context information for detection rules.
 #[derive(Debug, Default)]
@@ -10,7 +11,7 @@ pub struct ScanContext {
 }
 
 /// Result of applying detection rules to an entry.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DetectionResult {
     /// The file entry that was flagged
     pub entry: FileEntry,

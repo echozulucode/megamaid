@@ -334,17 +334,21 @@ fn test_parallel_scan_performance() {
     create_test_files(&temp, 5_000);
 
     let start = Instant::now();
-    let scanner = megamaid::scanner::ParallelScanner::new(megamaid::scanner::parallel::ScannerConfig {
-        max_depth: None,
-        skip_hidden: true,
-        follow_symlinks: false,
-        thread_count: 4,
-    });
+    let scanner =
+        megamaid::scanner::ParallelScanner::new(megamaid::scanner::parallel::ScannerConfig {
+            max_depth: None,
+            skip_hidden: true,
+            follow_symlinks: false,
+            thread_count: 4,
+        });
     let results = scanner.scan(temp.path()).unwrap();
     let duration = start.elapsed();
 
     println!("Parallel scanned {} files in {:?}", results.len(), duration);
-    println!("Throughput: {:.0} files/sec", results.len() as f64 / duration.as_secs_f64());
+    println!(
+        "Throughput: {:.0} files/sec",
+        results.len() as f64 / duration.as_secs_f64()
+    );
 
     assert!(results.len() >= 5_000);
     // Should be significantly faster with parallelization
@@ -354,8 +358,8 @@ fn test_parallel_scan_performance() {
 #[test]
 fn test_complete_pipeline_performance() {
     // Test the entire workflow: scan -> detect -> plan -> verify
-    use megamaid::detector::BuildArtifactRule;
     use megamaid::detector::rules::SizeThresholdRule;
+    use megamaid::detector::BuildArtifactRule;
     use megamaid::verifier::{VerificationConfig, VerificationEngine};
 
     let temp = TempDir::new().unwrap();
@@ -367,7 +371,11 @@ fn test_complete_pipeline_performance() {
 
     // Create many files
     for i in 0..1_000 {
-        fs::write(temp.path().join(format!("src/file_{}.rs", i)), "fn main() {}").unwrap();
+        fs::write(
+            temp.path().join(format!("src/file_{}.rs", i)),
+            "fn main() {}",
+        )
+        .unwrap();
     }
     for i in 0..500 {
         fs::write(
@@ -395,14 +403,22 @@ fn test_complete_pipeline_performance() {
     }));
     let detections = engine.analyze(&entries, &ScanContext::default());
     let detect_duration = detect_start.elapsed();
-    println!("Detect: {:?} ({} detections)", detect_duration, detections.len());
+    println!(
+        "Detect: {:?} ({} detections)",
+        detect_duration,
+        detections.len()
+    );
 
     // Step 3: Generate plan
     let plan_start = Instant::now();
     let generator = PlanGenerator::new(temp.path().to_path_buf());
     let plan = generator.generate(detections);
     let plan_duration = plan_start.elapsed();
-    println!("Plan generation: {:?} ({} entries)", plan_duration, plan.entries.len());
+    println!(
+        "Plan generation: {:?} ({} entries)",
+        plan_duration,
+        plan.entries.len()
+    );
 
     // Step 4: Verify
     let verify_start = Instant::now();
@@ -415,7 +431,10 @@ fn test_complete_pipeline_performance() {
     println!("Total pipeline: {:?}", total_duration);
 
     assert!(verification.is_safe_to_execute());
-    assert!(total_duration.as_secs() < 5, "Complete pipeline should finish in <5s");
+    assert!(
+        total_duration.as_secs() < 5,
+        "Complete pipeline should finish in <5s"
+    );
 }
 
 #[test]
@@ -442,13 +461,20 @@ fn test_memory_efficiency() {
 
     // Verify sizes are reasonable
     let entries_size_estimate = entries.len() * std::mem::size_of::<FileEntry>();
-    let plan_size_estimate = plan.entries.len() * std::mem::size_of::<megamaid::models::CleanupEntry>();
+    let plan_size_estimate =
+        plan.entries.len() * std::mem::size_of::<megamaid::models::CleanupEntry>();
 
-    println!("Entries memory estimate: ~{} KB", entries_size_estimate / 1024);
+    println!(
+        "Entries memory estimate: ~{} KB",
+        entries_size_estimate / 1024
+    );
     println!("Plan memory estimate: ~{} KB", plan_size_estimate / 1024);
     println!("YAML size: {} KB", yaml.len() / 1024);
 
     // For 5K entries, memory should be well under 10MB
-    assert!(entries_size_estimate < 10_000_000, "Entries should use <10MB");
+    assert!(
+        entries_size_estimate < 10_000_000,
+        "Entries should use <10MB"
+    );
     assert!(yaml.len() < 5_000_000, "YAML should be <5MB for 5K entries");
 }

@@ -75,11 +75,7 @@ fn test_parallel_vs_sequential_performance() {
 
     // Create 500 test files
     for i in 0..500 {
-        fs::write(
-            temp.path().join(format!("file{}.txt", i)),
-            vec![0u8; 1000],
-        )
-        .unwrap();
+        fs::write(temp.path().join(format!("file{}.txt", i)), vec![0u8; 1000]).unwrap();
     }
 
     // Create file list for plan
@@ -103,11 +99,7 @@ fn test_parallel_vs_sequential_performance() {
 
     // Recreate files for parallel test
     for i in 0..500 {
-        fs::write(
-            temp.path().join(format!("file{}.txt", i)),
-            vec![0u8; 1000],
-        )
-        .unwrap();
+        fs::write(temp.path().join(format!("file{}.txt", i)), vec![0u8; 1000]).unwrap();
     }
 
     // Test parallel execution
@@ -137,7 +129,10 @@ fn test_parallel_vs_sequential_performance() {
 
     // Parallel should be at least as fast (but might be slower on single-core or very fast SSDs)
     // We just verify it completes successfully
-    assert!(parallel_duration.as_secs() < 10, "Parallel execution too slow");
+    assert!(
+        parallel_duration.as_secs() < 10,
+        "Parallel execution too slow"
+    );
 }
 
 #[test]
@@ -152,11 +147,7 @@ fn test_parallel_execution_with_nested_directories() {
 
         for j in 0..10 {
             let file_path = format!("dir{}/file{}.txt", i, j);
-            fs::write(
-                temp.path().join(&file_path),
-                vec![0u8; 500],
-            )
-            .unwrap();
+            fs::write(temp.path().join(&file_path), vec![0u8; 500]).unwrap();
             all_files.push(file_path);
         }
     }

@@ -204,6 +204,120 @@ cargo bench
 | Planner   | 85%    |
 | CLI       | 80%    |
 
+## Quality Assurance & CI/CD
+
+**CRITICAL: Run all quality checks upon completion of every phase and major milestone. Fix ALL issues before marking work as complete.**
+
+GitHub Actions runs these checks automatically on every push. To avoid CI failures, run these tools locally before committing:
+
+### Pre-Commit Quality Checklist
+
+Run the following commands in order. All must pass without errors or warnings:
+
+```bash
+# 1. Format check (must pass before other checks)
+cargo fmt --all --check
+
+# 2. Auto-fix formatting issues
+cargo fmt --all
+
+# 3. Clippy lints (strict: no warnings allowed)
+cargo clippy --all-targets --all-features -- -D warnings
+
+# 4. Run all unit and integration tests
+cargo test --all
+
+# 5. Run documentation tests
+cargo test --doc
+
+# 6. Build in release mode (catches optimization issues)
+cargo build --release
+
+# 7. Check for unused dependencies (optional but recommended)
+cargo +nightly udeps
+```
+
+### When to Run Quality Checks
+
+**MANDATORY quality check points:**
+
+1. **After completing each phase** (e.g., Phase 3.1, Phase 3.2)
+   - Run full quality checklist
+   - Fix all clippy warnings
+   - Ensure all tests pass
+   - Verify formatting is correct
+
+2. **Before marking a milestone complete** (e.g., Milestone 3)
+   - Run full quality checklist
+   - Run long-running performance tests: `cargo test --ignored`
+   - Review and update test counts in this document
+   - Update documentation to reflect new features
+
+3. **Before creating commits**
+   - At minimum: `cargo fmt --all && cargo clippy -- -D warnings && cargo test`
+   - Fix all issues before committing
+
+4. **Before creating pull requests**
+   - Run complete quality checklist
+   - Verify CI will pass
+   - Update CLAUDE.md with progress notes
+
+### Common Issues & Fixes
+
+**Formatting issues:**
+```bash
+# Auto-fix all formatting
+cargo fmt --all
+```
+
+**Clippy warnings:**
+```bash
+# See all warnings with explanations
+cargo clippy --all-targets --all-features -- -D warnings
+
+# Common fixes:
+# - Remove unused imports
+# - Add #[allow(dead_code)] for test helpers
+# - Use .map_err() instead of match for error conversion
+# - Replace .clone() with borrowing where possible
+```
+
+**Test failures:**
+```bash
+# Run specific test with output
+cargo test test_name -- --nocapture
+
+# Run tests in single thread (for debugging race conditions)
+cargo test -- --test-threads=1
+
+# Run ignored long-running tests
+cargo test --ignored
+```
+
+### GitHub Actions Workflow
+
+The CI pipeline runs on every push and pull request:
+
+1. **Format Check**: `cargo fmt --check` (fails if not formatted)
+2. **Clippy**: `cargo clippy -- -D warnings` (fails on any warning)
+3. **Tests**: `cargo test --all` (fails if any test fails)
+4. **Build**: `cargo build --release` (fails if build fails)
+
+**If CI fails:**
+1. Pull the latest changes
+2. Run the exact failing command locally
+3. Fix all issues
+4. Re-run full quality checklist
+5. Commit fixes and push
+
+### Quality Standards
+
+- **Zero warnings policy**: Clippy must report 0 warnings
+- **100% test pass rate**: All tests must pass on all platforms
+- **Consistent formatting**: Use rustfmt defaults (no custom config)
+- **No ignored clippy lints**: Fix issues instead of adding #[allow()]
+- **Documentation coverage**: All public APIs must have doc comments
+
 ## Performance Targets
 
 **Milestone 1 & 2 Goals (ACHIEVED ✅):**
@@ -247,7 +361,7 @@ cargo bench
 
 ## Implementation Phases
 
-**Current Status: Milestone 3 COMPLETE ✅ (All 4 phases: 3.1, 3.2, 3.3, 3.4)**
+**Current Status: Milestone 4 IN PROGRESS 🚧 (Phase 4.1: Tauri Setup & Foundation)**
 
 ### Milestone 1: Directory Scan & Plan Generation ✅
 
@@ -771,13 +885,50 @@ See `docs/ai/research/` for:
 - Full parallel processing support
 - Configuration system fully integrated
 
-### Future Milestones
+### Current Milestone
 
-- **Milestone 4**: Tauri GUI Integration
-  - Visual interface for plan review
-  - Interactive file browser
-  - Real-time progress visualization
-  - Disk usage charts
+- **Milestone 4 - Phase 4.1**: Tauri Setup & Foundation (IN PROGRESS 🚧)
+  - Installing Tauri CLI (868 crates compiling)
+  - ✅ Svelte + TypeScript frontend created (megamaid-ui/)
+  - ✅ Frontend dependencies installed (92 packages)
+  - Pending: Tauri project initialization
+  - Pending: Foundational Tauri commands
+  - Pending: Basic IPC and state management
+  - Pending: App layout and routing
+
+### Future Phases
+
+- **Milestone 4 - Phase 4.2**: Scan Interface & Progress
+  - Directory selection UI
+  - Scan configuration panel
+  - Real-time progress display
+  - Backend integration
+
+- **Milestone 4 - Phase 4.3**: Results Visualization
+  - Interactive file tree view
+  - Disk usage tree map (DaisyDisk-style)
+  - Statistics dashboard
+  - Detail panel
+
+- **Milestone 4 - Phase 4.4**: Plan Review & Editing
+  - Plan editor interface
+  - Action assignment UI
+  - Plan save/load functionality
+  - Verification display
+
+- **Milestone 4 - Phase 4.5**: Execution & Monitoring
+  - Execution configuration UI
+  - Real-time progress monitoring
+  - Results display
+  - Notification system
+
+- **Milestone 4 - Phase 4.6**: Polish & Distribution
+  - UI/UX polish
+  - Performance optimization
+  - Windows installer
+  - Documentation
+
+### Future Milestones
 
 - **Milestone 5**: Advanced Features & NTFS Optimizations
   - NTFS MFT scanning for Windows optimization

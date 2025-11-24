@@ -42,7 +42,14 @@ pub fn run_command(command: Commands, config_path: Option<PathBuf>) -> Result<()
             max_depth,
             skip_hidden,
             large_file_threshold,
-        } => run_scan(&config, &path, &output, max_depth, skip_hidden, large_file_threshold),
+        } => run_scan(
+            &config,
+            &path,
+            &output,
+            max_depth,
+            skip_hidden,
+            large_file_threshold,
+        ),
         Commands::Stats { plan } => run_stats(&plan),
         Commands::Verify {
             plan,
@@ -313,7 +320,10 @@ fn run_execute(cfg: &MegamaidConfig, options: ExecuteOptions) -> Result<()> {
 
     let exec_config = ExecutionConfig {
         mode,
-        backup_dir: options.backup_dir.clone().or(cfg.executor.backup_dir.clone()),
+        backup_dir: options
+            .backup_dir
+            .clone()
+            .or(cfg.executor.backup_dir.clone()),
         fail_fast: options.fail_fast || cfg.executor.fail_fast,
         use_recycle_bin: options.recycle_bin || cfg.executor.use_recycle_bin,
         parallel: options.parallel || cfg.executor.parallel,
@@ -340,7 +350,10 @@ fn run_execute(cfg: &MegamaidConfig, options: ExecuteOptions) -> Result<()> {
 
     // Display parallel execution mode
     if options.parallel {
-        println!("⚡ PARALLEL EXECUTION - Using batch size: {}", options.batch_size);
+        println!(
+            "⚡ PARALLEL EXECUTION - Using batch size: {}",
+            options.batch_size
+        );
         println!();
     }
 
@@ -475,7 +488,14 @@ mod tests {
     fn test_run_scan_nonexistent_path() {
         let output = PathBuf::from("plan.yaml");
         let config = MegamaidConfig::default();
-        let result = run_scan(&config, Path::new("/nonexistent/path"), &output, None, true, 100);
+        let result = run_scan(
+            &config,
+            Path::new("/nonexistent/path"),
+            &output,
+            None,
+            true,
+            100,
+        );
 
         assert!(result.is_err());
     }

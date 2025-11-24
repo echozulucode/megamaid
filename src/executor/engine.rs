@@ -3,12 +3,13 @@
 use crate::models::{CleanupAction, CleanupEntry, CleanupPlan};
 use crate::scanner::progress::AdvancedProgress;
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Instant, SystemTime};
 
 /// Configuration for execution behavior.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecutionConfig {
     pub mode: ExecutionMode,
     pub backup_dir: Option<PathBuf>,
@@ -34,7 +35,8 @@ impl Default for ExecutionConfig {
 }
 
 /// Execution modes.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ExecutionMode {
     /// Simulate execution without actually deleting
     DryRun,
@@ -836,7 +838,10 @@ mod tests {
 
         // All should be dry-run status
         assert_eq!(result.operations.len(), 10);
-        assert!(result.operations.iter().all(|r| r.status == OperationStatus::DryRun));
+        assert!(result
+            .operations
+            .iter()
+            .all(|r| r.status == OperationStatus::DryRun));
         assert_eq!(result.summary.space_freed, 70);
 
         // Files should still exist

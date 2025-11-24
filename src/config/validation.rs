@@ -47,8 +47,7 @@ fn validate_detector(detector: &super::schema::DetectorConfig) -> Result<()> {
 
     // Validate custom rules
     for rule in &detector.custom_rules {
-        validate_custom_rule(rule)
-            .context(format!("Invalid custom rule: {}", rule.name))?;
+        validate_custom_rule(rule).context(format!("Invalid custom rule: {}", rule.name))?;
     }
 
     Ok(())
@@ -100,10 +99,7 @@ fn validate_custom_rule(rule: &CustomRule) -> Result<()> {
         }
         for ext in exts {
             if !ext.starts_with('.') {
-                anyhow::bail!(
-                    "Extension '{}' must start with a dot (e.g., '.txt')",
-                    ext
-                );
+                anyhow::bail!("Extension '{}' must start with a dot (e.g., '.txt')", ext);
             }
         }
     }
@@ -259,7 +255,10 @@ mod tests {
 
         let result = validate_custom_rule(&rule);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("name cannot be empty"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("name cannot be empty"));
     }
 
     #[test]
@@ -296,7 +295,10 @@ mod tests {
 
         let result = validate_custom_rule(&rule);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("must start with a dot"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("must start with a dot"));
     }
 
     #[test]

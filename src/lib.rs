@@ -93,8 +93,7 @@ pub mod cli;
 // Re-export commonly used types
 pub use cli::{run_command, Cli, Commands};
 pub use config::{
-    load_config, load_default_config, parse_config, validate_config, write_config,
-    MegamaidConfig,
+    load_config, load_default_config, parse_config, validate_config, write_config, MegamaidConfig,
 };
 pub use detector::{
     BuildArtifactRule, DetectionEngine, DetectionResult, DetectionRule, ScanContext,
