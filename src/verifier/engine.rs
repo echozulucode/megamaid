@@ -323,7 +323,8 @@ mod tests {
         let plan = create_test_plan(temp.path(), vec![entry]);
 
         // Wait and touch file (same content, different mtime)
-        std::thread::sleep(std::time::Duration::from_secs(3));
+        // Sleep for 5 seconds to exceed the 2-second tolerance in verifier
+        std::thread::sleep(std::time::Duration::from_secs(5));
         fs::write(&file_path, "content").unwrap();
 
         let verifier = VerificationEngine::new(VerificationConfig::default());

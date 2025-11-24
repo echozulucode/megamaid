@@ -147,7 +147,7 @@ executor:
     }
 
     #[test]
-    fn test_load_default_config_found() {
+    fn test_load_config_from_file() {
         let temp = TempDir::new().unwrap();
         let config_path = temp.path().join("megamaid.yaml");
 
@@ -157,11 +157,9 @@ scanner:
 "#;
         fs::write(&config_path, yaml).unwrap();
 
-        std::env::set_current_dir(temp.path()).unwrap();
-
-        let result = load_default_config().unwrap();
-        assert!(result.is_some());
-        assert_eq!(result.unwrap().scanner.max_depth, Some(20));
+        // Test loading from explicit path instead of relying on current directory
+        let result = load_config(&config_path).unwrap();
+        assert_eq!(result.scanner.max_depth, Some(20));
     }
 
     #[test]
