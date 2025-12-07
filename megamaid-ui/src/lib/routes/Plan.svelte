@@ -99,8 +99,8 @@
     if (!plan) return;
     saving = true;
     try {
-      const saved = await savePlanToFile(plan);
-      infoMessage = saved ? 'Plan saved to disk.' : 'Save canceled.';
+      const savedPath = await savePlanToFile(plan);
+      infoMessage = savedPath ? `Plan saved to ${savedPath}.` : 'Save canceled.';
     } catch (err) {
       planError = err instanceof Error ? err.message : String(err);
     } finally {

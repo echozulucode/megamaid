@@ -160,15 +160,19 @@ export async function loadPlanFromFile(): Promise<CleanupPlan | null> {
   return invoke<CleanupPlan>('load_cleanup_plan', { path: selected });
 }
 
-export async function savePlanToFile(plan: CleanupPlan): Promise<boolean> {
+export async function savePlanToFile(plan: CleanupPlan): Promise<string | null> {
   await ensureTauri();
+  const baseDir = plan.base_path ? plan.base_path.toString() : undefined;
+  const defaultPath = baseDir
+    ? `${baseDir.replace(/[/\\\\]$/, '')}/megamaid-plan.yaml`
+    : 'megamaid-plan.yaml';
   const target = await save({
     filters: [{ name: 'Plans', extensions: ['yaml', 'yml', 'toml'] }],
-    defaultPath: 'megamaid-plan.yaml',
+    defaultPath,
   });
   if (!target) {
-    return false;
+    return null;
   }
   await invoke<void>('save_cleanup_plan', { plan, output_path: target });
-  return true;
+  return target;
 }
