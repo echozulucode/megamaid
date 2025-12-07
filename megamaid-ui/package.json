@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json"
+    "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
+    "tauri": "tauri dev",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^6.2.1",
@@ -15,13 +17,17 @@
     "@types/node": "^24.10.1",
     "autoprefixer": "^10.4.22",
     "postcss": "^8.5.6",
+    "@playwright/test": "^1.50.1",
     "svelte": "^5.43.8",
     "svelte-check": "^4.3.4",
-    "tailwindcss": "^4.1.17",
+    "tailwindcss": "^3.4.15",
     "typescript": "~5.9.3",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "@tauri-apps/cli": "^2.9.2"
   },
   "dependencies": {
+    "@tauri-apps/api": "^2.9.1",
+    "@tauri-apps/plugin-dialog": "^2.4.2",
     "svelte-spa-router": "^4.0.1"
   }
 }

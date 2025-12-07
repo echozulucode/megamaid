@@ -25,16 +25,16 @@ pub async fn get_default_verifier_config() -> Result<VerificationConfig, String>
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_verifier_config_serialization() {
-        let config = VerifierConfig {
-            check_size: true,
-            check_mtime: true,
-            fail_fast: false,
-        };
+#[test]
+fn test_verifier_config_serialization() {
+    let config = VerificationConfig {
+        check_size: true,
+        check_mtime: true,
+        fail_fast: false,
+    };
 
-        let json = serde_json::to_string(&config).unwrap();
-        let deserialized: VerifierConfig = serde_json::from_str(&json).unwrap();
+    let json = serde_json::to_string(&config).unwrap();
+    let deserialized: VerificationConfig = serde_json::from_str(&json).unwrap();
 
         assert_eq!(config.check_size, deserialized.check_size);
         assert_eq!(config.check_mtime, deserialized.check_mtime);

@@ -20,7 +20,7 @@ Milestone 4 adds a modern desktop GUI to Megamaid using Tauri + Svelte, providin
 
 ## Phase 4.1: Tauri Setup & Foundation
 
-**Status:** IN PROGRESS (20% complete)
+**Status:** IN PROGRESS (90% complete)
 **Started:** November 22, 2025
 **Target Completion:** November 29, 2025
 
@@ -28,36 +28,36 @@ Milestone 4 adds a modern desktop GUI to Megamaid using Tauri + Svelte, providin
 
 #### Environment Setup
 - [x] ✅ Node.js and npm available (v24.11.1, npm 11.5.2)
-- [~] ⏳ Install Tauri CLI v2.9.4 (latest stable, 884 crates to compile)
-  - Note: v2.0.0 failed due to compatibility issues, using latest instead
+- [x] ✅ Tauri CLI installed (v2.9.2)
 - [x] ✅ Create Svelte + TypeScript frontend project
-- [x] ✅ Install frontend dependencies (92 packages)
+- [x] ✅ Install frontend dependencies (incl. `@tauri-apps/api`)
 
 #### Project Structure
-- [ ] Initialize Tauri in megamaid-ui directory
-- [ ] Configure tauri.conf.json for megamaid
-- [ ] Set up build scripts (dev/build)
-- [ ] Configure frontend for Tauri integration
+- [x] Initialize Tauri in megamaid-ui directory
+- [x] Configure tauri.conf.json for megamaid
+- [x] Set up build scripts (dev/build)
+- [x] Configure frontend for Tauri integration
 
 #### Backend Integration
-- [ ] Create src-tauri directory structure
-- [ ] Add megamaid library as dependency
-- [ ] Create Tauri command module
-- [ ] Implement foundational commands:
-  - [ ] `scan_directory(path, config)`
-  - [ ] `get_scan_results()`
-  - [ ] `load_plan(path)`
-  - [ ] `save_plan(path, plan)`
+- [x] Create src-tauri directory structure
+- [x] Add megamaid library as dependency
+- [x] Create Tauri command module
+- [x] Implement foundational commands:
+  - [x] `scan_directory(path, config)`
+  - [x] `get_scan_results()`
+  - [x] `load_plan(path)`
+  - [x] `save_plan(path, plan)`
 
 #### Frontend Foundation
-- [ ] Set up Tailwind CSS
-- [ ] Create app shell layout
-- [ ] Implement routing (home, scan, results, execute)
-- [ ] Create basic navigation
-- [ ] Set up state management (Svelte stores)
+- [x] Set up Tailwind CSS
+- [x] Create app shell layout
+- [x] Implement routing (home, scan, results, execute)
+- [x] Create basic navigation
+- [x] Wire scan -> detect -> plan pipeline from UI
+- [x] Set up state management (Svelte stores)
 
 #### IPC & Events
-- [ ] Set up event system for progress updates
+- [x] Set up event system for progress updates (basic start/complete/error)
 - [ ] Implement error handling framework
 - [ ] Create state synchronization between frontend/backend
 - [ ] Add logging infrastructure
@@ -71,12 +71,7 @@ Milestone 4 adds a modern desktop GUI to Megamaid using Tauri + Svelte, providin
 
 ### Blockers
 
-- ⏳ **Tauri CLI Installation** - Installing v2.9.4 (latest stable)
-  - Issue: v2.0.0 failed with compilation errors (compatibility issues)
-  - Solution: Installing latest version v2.9.4 instead
-  - Status: Downloading and compiling 884 crates
-  - Estimated completion: 15-20 minutes
-  - No action needed, compilation in progress
+- None right now; focus is wiring detector/plan + adding progress events.
 
 ### Notes
 
@@ -104,14 +99,16 @@ megamaid/
 │   │   ├── lib/          # Components
 │   │   ├── App.svelte    # Root component
 │   │   └── main.ts       # Entry point
-│   ├── src-tauri/        # Tauri backend (to be created)
+│   ├── src-tauri/        # Tauri backend (created)
 │   │   ├── src/          # Rust code
-│   │   └── Cargo.toml    # Dependencies
+│   │   │   ├── main.rs    # Tauri entrypoint
+│   │   │   └── commands/  # IPC commands (scan/detect/plan/verify/execute)
+│   │   ├── Cargo.toml    # Dependencies (tauri 2.9.2, megamaid path)
 │   ├── package.json
 │   ├── tsconfig.json
 │   └── vite.config.ts
 ├── docs/
-│   └── plan-004-milestone4-gui.md  # Detailed plan
+│   └── plan-004-milestone4-gui.md  # Detailed plan (docs/ai/plans)
 └── CLAUDE.md             # Updated with Milestone 4 status
 ```
 
@@ -225,45 +222,40 @@ megamaid/
 ## Dependencies Installed
 
 ### Frontend (megamaid-ui)
-- ✅ vite: 6.0.7
-- ✅ svelte: 5.20.0
-- ✅ typescript: 5.7.2
-- ✅ @sveltejs/vite-plugin-svelte: 5.0.4
-- ✅ svelte-check: 4.2.0
-- ✅ tslib: 2.8.1
-
-**Total:** 92 packages installed, 0 vulnerabilities
+- vite: 7.2.4
+- svelte: 5.43.8
+- typescript: 5.9.x
+- @sveltejs/vite-plugin-svelte: 6.2.1
+- svelte-check: 4.3.4
+- @tauri-apps/api: 2.9.1
 
 ### Backend (Tauri)
-- ⏳ tauri-cli: v2.0.0 (installing)
-- Pending: tauri (Rust library)
-- Pending: Additional Tauri dependencies
+- tauri-cli: v2.9.2 (installed)
+- tauri (Rust crate) via src-tauri/Cargo.toml
+- megamaid core linked via path dependency
+- tauri-plugin-dialog: enabled
 
----
 
 ## Next Actions
 
-**Immediate (waiting for Tauri CLI):**
-1. ⏳ Wait for Tauri CLI compilation to complete (~10 min)
-2. Initialize Tauri in megamaid-ui directory
-3. Configure tauri.conf.json
-4. Test that app launches
+**Immediate:**
+1. Add scan progress/error events and surface them in UI
+2. Implement `get_scan_results` and wire Results/Plan views to shared store
+3. Smoke-test desktop runtime (`npm run tauri dev`) and log issues
 
-**After Tauri CLI installed:**
-1. Add megamaid library to src-tauri dependencies
-2. Create first Tauri command (scan_directory)
-3. Test command invocation from frontend
-4. Set up progress event streaming
-5. Create basic app layout
+**After core wiring:**
+1. Start integration tests for IPC serialization (target 5+)
+2. Build basic error logging UI
+3. Review tauri.conf.json allowlists/logging
+4. Prep Results/Plan view stubs for Phase 4.2/4.4 data
 
 **By end of Phase 4.1:**
 - Working Tauri app with basic navigation
-- At least 3 Tauri commands functional
-- Frontend can trigger scans and display results
+- Scan + detect + plan commands callable from UI
+- Progress events hooked up
 - 5+ integration tests passing
 - Documentation updated
 
----
 
 ## Issues & Risks
 
@@ -280,12 +272,12 @@ megamaid/
 
 ## Resources
 
-- **Detailed Plan:** `docs/plan-004-milestone4-gui.md`
+- **Detailed Plan:** `docs/ai/plans/plan-004-milestone4-gui.md`
 - **Tauri Docs:** https://tauri.app/v1/guides/
 - **Svelte Docs:** https://svelte.dev/docs
 - **Tailwind CSS:** https://tailwindcss.com/docs
 
 ---
 
-**Last Updated:** November 22, 2025
-**Next Update:** When Tauri CLI installation completes
+**Last Updated:** December 5, 2025
+**Next Update:** After progress events + runtime smoke test

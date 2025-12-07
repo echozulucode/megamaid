@@ -2,12 +2,14 @@ mod commands;
 
 use std::sync::{Arc, Mutex};
 use serde::{Serialize, Deserialize};
+use crate::commands::scanner::ScanResult;
 
 /// Application state shared across Tauri commands
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppState {
     pub current_scan_path: Option<String>,
     pub scan_in_progress: bool,
+    pub last_scan_result: Option<ScanResult>,
 }
 
 impl Default for AppState {
@@ -15,6 +17,7 @@ impl Default for AppState {
         Self {
             current_scan_path: None,
             scan_in_progress: false,
+            last_scan_result: None,
         }
     }
 }
@@ -34,10 +37,12 @@ pub fn run() {
             }
             Ok(())
         })
+        .plugin(tauri_plugin_dialog::init())
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
             // Scanner commands
             commands::scan_directory,
+            commands::get_scan_results,
             // Detector commands
             commands::detect_cleanup_candidates,
             commands::get_default_detector_config,
