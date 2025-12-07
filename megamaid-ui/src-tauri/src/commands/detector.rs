@@ -1,4 +1,6 @@
-use megamaid::detector::{DetectionEngine, DetectionResult, SizeThresholdRule, BuildArtifactRule, ScanContext};
+use megamaid::detector::{
+    BuildArtifactRule, DetectionEngine, DetectionResult, ScanContext, SizeThresholdRule,
+};
 use megamaid::models::FileEntry;
 use serde::{Deserialize, Serialize};
 
@@ -19,9 +21,7 @@ pub async fn detect_cleanup_candidates(
     // Add size threshold rule if configured
     if let Some(threshold_mb) = config.size_threshold_mb {
         let threshold_bytes = threshold_mb * 1024 * 1024;
-        engine.add_rule(Box::new(SizeThresholdRule {
-            threshold_bytes,
-        }));
+        engine.add_rule(Box::new(SizeThresholdRule { threshold_bytes }));
     }
 
     // Add build artifact rule if enabled
@@ -59,6 +59,9 @@ mod tests {
         let deserialized: DetectorConfig = serde_json::from_str(&json).unwrap();
 
         assert_eq!(config.size_threshold_mb, deserialized.size_threshold_mb);
-        assert_eq!(config.enable_build_artifacts, deserialized.enable_build_artifacts);
+        assert_eq!(
+            config.enable_build_artifacts,
+            deserialized.enable_build_artifacts
+        );
     }
 }

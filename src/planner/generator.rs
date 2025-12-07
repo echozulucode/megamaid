@@ -120,7 +120,14 @@ impl PlanGenerator {
 }
 
 fn is_protected_path(path: &Path) -> bool {
-    let candidates = [".git", ".hg", ".svn", "package.json", "Cargo.toml"];
+    let candidates = [
+        ".git",
+        ".hg",
+        ".svn",
+        "package.json",
+        "Cargo.toml",
+        "pyproject.toml",
+    ];
     for c in candidates {
         if path.join(c).exists() {
             return true;

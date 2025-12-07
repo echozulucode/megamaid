@@ -14,6 +14,7 @@
   $: entries = $scanStore.plan?.entries ?? [];
   let actionFilter: 'all' | 'delete' | 'review' | 'keep' = 'all';
   let search = '';
+  let showActions = true;
 
   $: filteredEntries = entries.filter((entry) => {
     if (actionFilter !== 'all' && entry.action !== actionFilter) return false;
@@ -99,6 +100,9 @@
             bind:value={search}
             type="text"
           />
+          <button class="btn-secondary text-xs" on:click={() => (showActions = !showActions)}>
+            {showActions ? 'Hide Actions' : 'Show Actions'}
+          </button>
         </div>
 
         <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-200 space-y-2 max-h-64 overflow-auto">

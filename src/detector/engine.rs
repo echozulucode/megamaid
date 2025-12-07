@@ -60,7 +60,7 @@ impl DetectionEngine {
 
         for entry in entries {
             // Protect common source code files and source root directories from being flagged.
-            if is_protected_source(entry) || is_repo_root(entry) {
+            if is_protected_source(entry) || is_repo_root(entry) || is_protected_manifest(entry) {
                 continue;
             }
 
@@ -77,9 +77,7 @@ impl DetectionEngine {
                     if detection.rule_name == "build_artifact" && is_repo_root(entry) {
                         continue;
                     }
-                    results.push(DetectionResult {
-                        ..detection
-                    });
+                    results.push(DetectionResult { ..detection });
                     break; // Only flag once per entry
                 }
             }
@@ -114,20 +112,8 @@ fn is_protected_source(entry: &FileEntry) -> bool {
         if let Some(name) = entry.path.file_name().and_then(|n| n.to_str()) {
             let name = name.to_ascii_lowercase();
             const SOURCE_DIRS: &[&str] = &[
-                "src",
-                "app",
-                "apps",
-                "lib",
-                "libs",
-                "packages",
-                ".git",
-                ".hg",
-                ".svn",
-                ".idea",
-                ".vscode",
-                "config",
-                "configs",
-                "docs",
+                "src", "app", "apps", "lib", "libs", "packages", ".git", ".hg", ".svn", ".idea",
+                ".vscode", "config", "configs", "docs",
             ];
             if SOURCE_DIRS.contains(&name.as_str()) {
                 return true;
@@ -155,6 +141,20 @@ fn is_repo_root(entry: &FileEntry) -> bool {
     false
 }
 
+fn is_protected_manifest(entry: &FileEntry) -> bool {
+    // Protect directories that contain obvious project manifests
+    if entry.entry_type != crate::models::EntryType::Directory {
+        return false;
+    }
+    let manifests = ["package.json", "Cargo.toml", "pyproject.toml"];
+    for m in manifests {
+        if entry.path.join(m).exists() {
+            return true;
+        }
+    }
+    false
+}
+
 impl Default for DetectionEngine {
     fn default() -> Self {
         Self::new()
@@ -164,7 +164,6 @@ impl Default for DetectionEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::SystemTime;
     use crate::models::EntryType;
     use std::path::PathBuf;
     use std::time::SystemTime;

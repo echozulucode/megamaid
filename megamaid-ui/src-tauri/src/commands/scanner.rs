@@ -1,12 +1,12 @@
-use megamaid::scanner::{ParallelScanner, ScannerConfig};
+use crate::AppState;
 use megamaid::models::FileEntry;
+use megamaid::scanner::{ParallelScanner, ScannerConfig};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, Emitter, State};
-use crate::AppState;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc as StdArc;
+use std::sync::{Arc, Mutex};
+use tauri::{AppHandle, Emitter, State};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScanResult {
@@ -36,19 +36,21 @@ pub async fn scan_directory(
     let scanner = ParallelScanner::new(config);
     let progress = StdArc::new(AtomicUsize::new(0));
 
-    let entries = scanner.scan_with_progress(&scan_path, |count| {
-        progress.store(count, Ordering::Relaxed);
-        let _ = app.emit(
-            "scan:progress",
-            &serde_json::json!({
-                "path": path,
-                "files_scanned": count,
-            }),
-        );
-    }).map_err(|e| {
-        let _ = app.emit("scan:error", &e.to_string());
-        e.to_string()
-    })?;
+    let entries = scanner
+        .scan_with_progress(&scan_path, |count| {
+            progress.store(count, Ordering::Relaxed);
+            let _ = app.emit(
+                "scan:progress",
+                &serde_json::json!({
+                    "path": path,
+                    "files_scanned": count,
+                }),
+            );
+        })
+        .map_err(|e| {
+            let _ = app.emit("scan:error", &e.to_string());
+            e.to_string()
+        })?;
 
     let total_files = entries.len();
     let total_size: u64 = entries.iter().map(|e| e.size).sum();

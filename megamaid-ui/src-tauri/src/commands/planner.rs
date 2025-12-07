@@ -1,6 +1,6 @@
-use megamaid::planner::{PlanGenerator, PlanWriter};
 use megamaid::detector::DetectionResult;
-use megamaid::models::{CleanupPlan, CleanupAction};
+use megamaid::models::{CleanupAction, CleanupPlan};
+use megamaid::planner::{PlanGenerator, PlanWriter};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -34,13 +34,9 @@ pub async fn generate_cleanup_plan(
 
 /// Save a cleanup plan to disk
 #[tauri::command]
-pub async fn save_cleanup_plan(
-    plan: CleanupPlan,
-    output_path: String,
-) -> Result<(), String> {
+pub async fn save_cleanup_plan(plan: CleanupPlan, output_path: String) -> Result<(), String> {
     let path = PathBuf::from(output_path);
-    PlanWriter::write(&plan, &path)
-        .map_err(|e| e.to_string())?;
+    PlanWriter::write(&plan, &path).map_err(|e| e.to_string())?;
 
     Ok(())
 }
@@ -57,8 +53,8 @@ pub async fn load_cleanup_plan(path: String) -> Result<CleanupPlan, String> {
     let content = std::fs::read_to_string(&plan_path)
         .map_err(|e| format!("Failed to read plan file: {}", e))?;
 
-    let plan: CleanupPlan = serde_yaml::from_str(&content)
-        .map_err(|e| format!("Failed to parse plan file: {}", e))?;
+    let plan: CleanupPlan =
+        serde_yaml::from_str(&content).map_err(|e| format!("Failed to parse plan file: {}", e))?;
 
     Ok(plan)
 }
@@ -67,18 +63,22 @@ pub async fn load_cleanup_plan(path: String) -> Result<CleanupPlan, String> {
 #[tauri::command]
 pub async fn get_plan_stats(plan: CleanupPlan) -> Result<PlanStats, String> {
     let total_entries = plan.entries.len();
-    let delete_count = plan.entries.iter()
+    let delete_count = plan
+        .entries
+        .iter()
         .filter(|e| e.action == CleanupAction::Delete)
         .count();
-    let review_count = plan.entries.iter()
+    let review_count = plan
+        .entries
+        .iter()
         .filter(|e| e.action == CleanupAction::Review)
         .count();
-    let keep_count = plan.entries.iter()
+    let keep_count = plan
+        .entries
+        .iter()
         .filter(|e| e.action == CleanupAction::Keep)
         .count();
-    let total_size: u64 = plan.entries.iter()
-        .map(|e| e.size)
-        .sum();
+    let total_size: u64 = plan.entries.iter().map(|e| e.size).sum();
 
     Ok(PlanStats {
         total_entries,

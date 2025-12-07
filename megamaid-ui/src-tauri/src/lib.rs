@@ -1,8 +1,8 @@
 mod commands;
 
-use std::sync::{Arc, Mutex};
-use serde::{Serialize, Deserialize};
 use crate::commands::scanner::ScanResult;
+use serde::{Deserialize, Serialize};
+use std::sync::{Arc, Mutex};
 
 /// Application state shared across Tauri commands
 #[derive(Debug, Clone, Serialize, Deserialize)]

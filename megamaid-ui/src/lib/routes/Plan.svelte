@@ -7,6 +7,7 @@
     type CleanupAction,
     type CleanupEntry,
   } from '../services/tauri';
+  import { isProtectedPath } from '../utils/pathProtection';
 
   $: stats = $scanStore.planStats;
   $: plan = $scanStore.plan;
@@ -16,6 +17,7 @@
   let loading = false;
   let infoMessage: string | null = null;
   let showActions = true;
+  let batchMessage: string | null = null;
 
   $: filteredEntries = plan
     ? plan.entries.filter((entry) => {
@@ -26,6 +28,10 @@
 
   function updateAction(path: string, action: CleanupAction) {
     if (!plan) return;
+    if (action === 'delete' && isProtectedPath(path)) {
+        planError = 'Delete is disabled for protected paths (repo roots/manifests).';
+        return;
+    }
     const updatedEntries = plan.entries.map((entry) =>
       entry.path === path ? { ...entry, action } : entry
     );
@@ -88,6 +94,29 @@
     } finally {
       saving = false;
     }
+  }
+
+  function applyBatch(rule: 'build_artifact' | 'source_keep') {
+    if (!plan) return;
+    planError = null;
+    batchMessage = null;
+    const updatedEntries = plan.entries.map((entry) => {
+      if (rule === 'build_artifact' && entry.rule_name === 'build_artifact' && !isProtectedPath(entry.path)) {
+        return { ...entry, action: 'delete' as CleanupAction };
+      }
+      if (rule === 'source_keep' && isProtectedPath(entry.path)) {
+        return { ...entry, action: 'keep' as CleanupAction };
+      }
+      return entry;
+    });
+    const updatedPlan = { ...plan, entries: updatedEntries };
+    const updatedStats = computeStats(updatedPlan.entries);
+    scanStore.update((s) => ({
+      ...s,
+      plan: updatedPlan,
+      planStats: updatedStats,
+    }));
+    batchMessage = 'Batch actions applied.';
   }
 </script>
 

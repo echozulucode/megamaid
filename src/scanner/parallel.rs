@@ -147,7 +147,11 @@ impl ParallelScanner {
     }
 
     /// Scans with a progress callback.
-    pub fn scan_with_progress<F>(&self, path: &Path, _on_progress: F) -> Result<Vec<FileEntry>, ScanError>
+    pub fn scan_with_progress<F>(
+        &self,
+        path: &Path,
+        _on_progress: F,
+    ) -> Result<Vec<FileEntry>, ScanError>
     where
         F: Fn(usize) + Send + Sync,
     {

@@ -1,4 +1,4 @@
-use megamaid::executor::{ExecutionEngine, ExecutionConfig};
+use megamaid::executor::{ExecutionConfig, ExecutionEngine};
 use megamaid::models::CleanupPlan;
 
 /// Execute a cleanup plan
@@ -8,12 +8,11 @@ pub async fn execute_cleanup_plan(
     config: ExecutionConfig,
 ) -> Result<String, String> {
     let engine = ExecutionEngine::new(config);
-    let result = engine
-        .execute(&plan)
-        .map_err(|e| e.to_string())?;
+    let result = engine.execute(&plan).map_err(|e| e.to_string())?;
 
     // Convert result to JSON for now
-    Ok(format!("Executed {} operations: {} successful, {} failed, {} skipped. Space freed: {} bytes",
+    Ok(format!(
+        "Executed {} operations: {} successful, {} failed, {} skipped. Space freed: {} bytes",
         result.summary.total_operations,
         result.summary.successful,
         result.summary.failed,
