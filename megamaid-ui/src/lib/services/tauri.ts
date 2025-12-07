@@ -58,6 +58,10 @@ export type PlanConfig = {
   output_path: string;
 };
 
+export type PlanFileDialogOptions = {
+  defaultPath?: string;
+};
+
 export type ScanResult = {
   entries: FileEntry[];
   total_files: number;
@@ -142,4 +146,30 @@ export async function getLastScanResult(): Promise<ScanResult | null> {
 
   const result = await invoke<ScanResult | null>('get_scan_results');
   return result;
+}
+
+export async function loadPlanFromFile(): Promise<CleanupPlan | null> {
+  await ensureTauri();
+  const path = await open({
+    directory: false,
+    multiple: false,
+    filters: [{ name: 'Plans', extensions: ['yaml', 'yml', 'toml'] }],
+  });
+  const selected = Array.isArray(path) ? path[0] : path;
+  if (!selected) return null;
+  return invoke<CleanupPlan>('load_cleanup_plan', { path: selected });
+}
+
+export async function savePlanToFile(plan: CleanupPlan): Promise<void> {
+  await ensureTauri();
+  const savePath = await open({
+    directory: false,
+    multiple: false,
+    save: true,
+    filters: [{ name: 'Plans', extensions: ['yaml', 'yml', 'toml'] }],
+    defaultPath: 'megamaid-plan.yaml',
+  });
+  const target = Array.isArray(savePath) ? savePath[0] : savePath;
+  if (!target) return;
+  await invoke<void>('save_cleanup_plan', { plan, output_path: target });
 }

@@ -34,6 +34,9 @@
     let disposed = false;
 
     (async () => {
+      // Restore persisted directory if available
+      directory = $scanStore.directory || '';
+
       tauriAvailable = await detectTauriRuntime();
       if (!tauriAvailable || disposed) return;
 

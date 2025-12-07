@@ -1,10 +1,21 @@
 <script lang="ts">
   import { scanStore } from '../stores/scan';
-  import type { CleanupAction, CleanupEntry } from '../services/tauri';
+  import {
+    getPlanStats,
+    loadPlanFromFile,
+    savePlanToFile,
+    type CleanupAction,
+    type CleanupEntry,
+  } from '../services/tauri';
 
   $: stats = $scanStore.planStats;
   $: plan = $scanStore.plan;
   let actionFilter: 'all' | 'delete' | 'review' | 'keep' = 'all';
+  let planError: string | null = null;
+  let saving = false;
+  let loading = false;
+  let infoMessage: string | null = null;
+  let showActions = true;
 
   $: filteredEntries = plan
     ? plan.entries.filter((entry) => {
@@ -27,7 +38,7 @@
     }));
   }
 
-  function computeStats(entries: typeof plan extends { entries: infer E } ? CleanupEntry[] : CleanupEntry[]) {
+  function computeStats(entries: CleanupEntry[]) {
     const delete_count = entries.filter((e) => e.action === 'delete').length;
     const review_count = entries.filter((e) => e.action === 'review').length;
     const keep_count = entries.filter((e) => e.action === 'keep').length;
@@ -40,18 +51,60 @@
       total_size,
     };
   }
+
+  async function handleLoadPlan() {
+    planError = null;
+    infoMessage = null;
+    loading = true;
+    try {
+      const loaded = await loadPlanFromFile();
+      if (loaded) {
+        const loadedStats = await getPlanStats(loaded);
+        scanStore.update((s) => ({
+          ...s,
+          plan: loaded,
+          planStats: loadedStats,
+          directory: loaded.base_path?.toString() ?? s.directory,
+        }));
+        infoMessage = 'Plan loaded successfully.';
+      }
+    } catch (err) {
+      planError = err instanceof Error ? err.message : String(err);
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function handleSavePlan() {
+    planError = null;
+    infoMessage = null;
+    if (!plan) return;
+    saving = true;
+    try {
+      await savePlanToFile(plan);
+      infoMessage = 'Plan saved to disk.';
+    } catch (err) {
+      planError = err instanceof Error ? err.message : String(err);
+    } finally {
+      saving = false;
+    }
+  }
 </script>
 
 <div class="container mx-auto p-8">
     <div class="card space-y-6">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-sm uppercase tracking-wide text-primary-600 font-semibold">Phase 4.4 preview</p>
           <h1 class="text-3xl font-bold">Cleanup Plan</h1>
           <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Shows the generated plan from the latest scan; editing to come.
+            Review and adjust actions, then save or load plans from disk.
           </p>
         </div>
+        {#if plan}
+          <button class="btn-secondary" on:click={() => (showActions = !showActions)}>
+            {showActions ? 'Hide Actions' : 'Show Actions'}
+          </button>
+        {/if}
       </div>
 
     {#if stats && plan}
@@ -100,17 +153,22 @@
                 <span>{entry.rule_name}</span>
               </div>
               <div class="text-xs text-gray-500 dark:text-gray-400">{entry.reason}</div>
-              <div class="flex gap-2 mt-2">
-                <button class="btn-secondary text-xs" on:click={() => updateAction(entry.path, 'keep')}>
-                  Keep
-                </button>
-                <button class="btn-secondary text-xs" on:click={() => updateAction(entry.path, 'review')}>
-                  Review
-                </button>
-                <button class="btn-primary text-xs" on:click={() => updateAction(entry.path, 'delete')}>
-                  Delete
-                </button>
-              </div>
+              {#if showActions}
+                <div class="flex gap-2 mt-2">
+                  <button class="btn-secondary text-xs" on:click={() => updateAction(entry.path, 'keep')}>
+                    Keep
+                  </button>
+                  <button class="btn-secondary text-xs" on:click={() => updateAction(entry.path, 'review')}>
+                    Review
+                  </button>
+                  <button
+                    class="btn-primary text-xs"
+                    on:click={() => updateAction(entry.path, 'delete')}
+                  >
+                    Delete
+                  </button>
+                </div>
+              {/if}
             </div>
           {/each}
           {#if filteredEntries.length > 10}
@@ -120,17 +178,37 @@
           {/if}
         </div>
       </div>
-
-      <div class="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-        <p class="text-sm text-yellow-800 dark:text-yellow-200">
-          Editing (batch actions, save/load) will be added in Phase 4.4.
-        </p>
-      </div>
     {:else}
       <div class="p-8 bg-gray-50 dark:bg-gray-700 rounded-lg text-center">
         <p class="text-gray-500 dark:text-gray-400">
           No cleanup plan loaded. Generate a plan from the Scan page to populate this view.
         </p>
+        <button class="btn-secondary mt-3" on:click={handleLoadPlan} disabled={loading}>
+          {loading ? 'Loading…' : 'Load Plan'}
+        </button>
+      </div>
+    {/if}
+
+    {#if plan}
+      <div class="flex gap-3">
+        <button class="btn-primary" on:click={handleSavePlan} disabled={saving}>
+          {saving ? 'Saving…' : 'Save Plan'}
+        </button>
+        <button class="btn-secondary" on:click={handleLoadPlan} disabled={loading}>
+          {loading ? 'Loading…' : 'Load Plan'}
+        </button>
+      </div>
+    {/if}
+
+    {#if planError}
+      <div class="p-3 border border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/30 rounded-lg text-sm text-red-800 dark:text-red-100">
+        {planError}
+      </div>
+    {/if}
+
+    {#if infoMessage}
+      <div class="p-3 border border-green-200 dark:border-green-700 bg-green-50 dark:bg-green-900/30 rounded-lg text-sm text-green-800 dark:text-green-100">
+        {infoMessage}
       </div>
     {/if}
   </div>

@@ -3,6 +3,7 @@
 use crate::detector::rules::{BuildArtifactRule, DetectionRule, SizeThresholdRule};
 use crate::models::FileEntry;
 use serde::{Deserialize, Serialize};
+use std::path::Path;
 
 /// Context information for detection rules.
 #[derive(Debug, Default)]
@@ -59,17 +60,25 @@ impl DetectionEngine {
 
         for entry in entries {
             // Protect common source code files and source root directories from being flagged.
-            if is_protected_source(entry) {
+            if is_protected_source(entry) || is_repo_root(entry) {
                 continue;
             }
 
             // Try each rule in order; first match wins
             for rule in &self.rules {
                 if rule.should_flag(entry, context) {
-                    results.push(DetectionResult {
+                    // Block delete-intent for protected patterns; downgrade to review
+                    let detection = DetectionResult {
                         entry: entry.clone(),
                         rule_name: rule.name().to_string(),
                         reason: rule.reason(),
+                    };
+                    // If rule is build_artifact but path looks like repo root, skip
+                    if detection.rule_name == "build_artifact" && is_repo_root(entry) {
+                        continue;
+                    }
+                    results.push(DetectionResult {
+                        ..detection
                     });
                     break; // Only flag once per entry
                 }
@@ -126,6 +135,23 @@ fn is_protected_source(entry: &FileEntry) -> bool {
         }
     }
 
+    false
+}
+
+fn is_repo_root(entry: &FileEntry) -> bool {
+    if entry.entry_type != crate::models::EntryType::Directory {
+        return false;
+    }
+    let path = &entry.path;
+    if path == Path::new(".") {
+        return true;
+    }
+    let candidates = [".git", ".hg", ".svn", "package.json", "Cargo.toml"];
+    for c in candidates {
+        if path.join(c).exists() {
+            return true;
+        }
+    }
     false
 }
 

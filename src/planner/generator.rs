@@ -54,7 +54,12 @@ impl PlanGenerator {
                 continue; // Skip this entry - parent is already being deleted
             }
 
-            let action = self.default_action_for_rule(&detection.rule_name);
+            let mut action = self.default_action_for_rule(&detection.rule_name);
+
+            // Downgrade to Review if path is protected (repo root/source-heavy)
+            if is_protected_path(&detection.entry.path) {
+                action = CleanupAction::Review;
+            }
 
             // If this is a directory marked for deletion, track it
             if detection.entry.entry_type == crate::models::EntryType::Directory
@@ -112,6 +117,16 @@ impl PlanGenerator {
     pub fn base_path(&self) -> &Path {
         &self.base_path
     }
+}
+
+fn is_protected_path(path: &Path) -> bool {
+    let candidates = [".git", ".hg", ".svn", "package.json", "Cargo.toml"];
+    for c in candidates {
+        if path.join(c).exists() {
+            return true;
+        }
+    }
+    false
 }
 
 #[cfg(test)]
