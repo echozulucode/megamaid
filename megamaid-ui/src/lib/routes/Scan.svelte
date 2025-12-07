@@ -26,6 +26,9 @@
   let tauriAvailable = false;
   let eventMessage = '';
   let unsubscribers: UnlistenFn[] = [];
+  let filesScanned = 0;
+  let totalFilesEstimate: number | null = null;
+  let lastProgressPath: string | undefined = undefined;
 
   onMount(() => {
     let disposed = false;
@@ -36,13 +39,30 @@
 
       listen<string>('scan:started', (event) => {
         eventMessage = `Scan started: ${event.payload}`;
+        filesScanned = 0;
         scanStore.update((s) => ({ ...s, status: 'scanning' }));
+      }).then((unsub: UnlistenFn) => unsubscribers.push(unsub));
+
+      listen<{ path?: string; files_scanned?: number }>('scan:progress', (event) => {
+        const payload = event.payload;
+        if (typeof payload?.files_scanned === 'number') {
+          filesScanned = payload.files_scanned;
+        }
+        lastProgressPath = payload?.path;
+        scanStore.update((s) => ({
+          ...s,
+          status: 'scanning',
+          filesScanned,
+          lastProgressPath,
+        }));
       }).then((unsub: UnlistenFn) => unsubscribers.push(unsub));
 
       listen<{ total_files?: number; total_size?: number; path?: string }>('scan:complete', (event) => {
         const payload = event.payload;
         const pathText = payload?.path ? ` (${payload.path})` : '';
         eventMessage = `Scan complete${pathText}`;
+        filesScanned = payload?.total_files ?? filesScanned;
+        totalFilesEstimate = payload?.total_files ?? null;
       }).then((unsub: UnlistenFn) => unsubscribers.push(unsub));
 
       listen<string>('scan:error', (event) => {
@@ -102,6 +122,7 @@
       plan: undefined,
       planStats: undefined,
       error: null,
+      filesScanned: 0,
     });
 
     try {
@@ -135,7 +156,9 @@
         plan,
         planStats,
         error: null,
+        filesScanned,
       });
+      totalFilesEstimate = result.total_files;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       error = message;
@@ -147,6 +170,7 @@
         detections: undefined,
         plan: undefined,
         planStats: undefined,
+        filesScanned,
       });
     } finally {
       scanning = false;
@@ -289,6 +313,11 @@
     {#if eventMessage}
       <div class="p-3 border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-sm text-blue-800 dark:text-blue-100">
         {eventMessage}
+        {#if filesScanned > 0}
+          <span class="ml-2 text-xs text-gray-600 dark:text-gray-300">
+            {filesScanned.toLocaleString()} files scanned
+          </span>
+        {/if}
       </div>
     {/if}
 
@@ -310,6 +339,26 @@
     {:else if !tauriAvailable}
       <div class="p-3 border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg text-sm text-yellow-800 dark:text-yellow-100">
         Launch the packaged desktop app to run real scans. UI can still be previewed in the browser.
+      </div>
+    {:else if scanning}
+      <div class="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-sm text-blue-900 dark:text-blue-100 space-y-1">
+        <div class="flex items-center justify-between">
+          <span class="font-semibold">Scanning…</span>
+          <span>{filesScanned.toLocaleString()} files</span>
+        </div>
+        {#if lastProgressPath}
+          <div class="text-xs text-blue-900/80 dark:text-blue-100/80 truncate">
+            {lastProgressPath}
+          </div>
+        {/if}
+        {#if totalFilesEstimate}
+          <div class="h-2 bg-blue-100 dark:bg-blue-800 rounded">
+            <div
+              class="h-2 bg-blue-500 rounded"
+              style={`width: ${Math.min(100, (filesScanned / totalFilesEstimate) * 100).toFixed(1)}%`}
+            ></div>
+          </div>
+        {/if}
       </div>
     {/if}
   </div>

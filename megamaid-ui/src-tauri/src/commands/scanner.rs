@@ -5,6 +5,8 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, State};
 use crate::AppState;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc as StdArc;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScanResult {
@@ -32,7 +34,18 @@ pub async fn scan_directory(
     let _ = app.emit("scan:started", &path);
 
     let scanner = ParallelScanner::new(config);
-    let entries = scanner.scan(&scan_path).map_err(|e| {
+    let progress = StdArc::new(AtomicUsize::new(0));
+
+    let entries = scanner.scan_with_progress(&scan_path, |count| {
+        progress.store(count, Ordering::Relaxed);
+        let _ = app.emit(
+            "scan:progress",
+            &serde_json::json!({
+                "path": path,
+                "files_scanned": count,
+            }),
+        );
+    }).map_err(|e| {
         let _ = app.emit("scan:error", &e.to_string());
         e.to_string()
     })?;

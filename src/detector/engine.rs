@@ -58,6 +58,11 @@ impl DetectionEngine {
         let mut results = Vec::new();
 
         for entry in entries {
+            // Protect common source code files and source root directories from being flagged.
+            if is_protected_source(entry) {
+                continue;
+            }
+
             // Try each rule in order; first match wins
             for rule in &self.rules {
                 if rule.should_flag(entry, context) {
@@ -80,6 +85,50 @@ impl DetectionEngine {
     }
 }
 
+fn is_protected_source(entry: &FileEntry) -> bool {
+    // Skip obvious source code files
+    if entry.path.is_file() {
+        if let Some(ext) = entry.path.extension().and_then(|e| e.to_str()) {
+            let ext = ext.to_ascii_lowercase();
+            const SOURCE_EXTS: &[&str] = &[
+                "rs", "ts", "tsx", "js", "jsx", "svelte", "vue", "py", "go", "java", "kt", "c",
+                "cc", "cpp", "h", "hpp", "cs", "rb", "php",
+            ];
+            if SOURCE_EXTS.contains(&ext.as_str()) {
+                return true;
+            }
+        }
+    }
+
+    // Skip common source/config directories
+    if entry.path.is_dir() {
+        if let Some(name) = entry.path.file_name().and_then(|n| n.to_str()) {
+            let name = name.to_ascii_lowercase();
+            const SOURCE_DIRS: &[&str] = &[
+                "src",
+                "app",
+                "apps",
+                "lib",
+                "libs",
+                "packages",
+                ".git",
+                ".hg",
+                ".svn",
+                ".idea",
+                ".vscode",
+                "config",
+                "configs",
+                "docs",
+            ];
+            if SOURCE_DIRS.contains(&name.as_str()) {
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
 impl Default for DetectionEngine {
     fn default() -> Self {
         Self::new()
@@ -89,6 +138,7 @@ impl Default for DetectionEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::SystemTime;
     use crate::models::EntryType;
     use std::path::PathBuf;
     use std::time::SystemTime;
@@ -109,6 +159,16 @@ mod tests {
             SystemTime::now(),
             EntryType::Directory,
         )
+    }
+
+    #[test]
+    fn source_files_are_not_flagged() {
+        let engine = DetectionEngine::new();
+        let ctx = ScanContext::default();
+        let src_file = create_test_entry("src/main.rs", 10);
+
+        let results = engine.analyze(&[src_file], &ctx);
+        assert!(results.is_empty());
     }
 
     #[test]

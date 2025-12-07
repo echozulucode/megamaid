@@ -11,6 +11,15 @@
 
   $: stats = $scanStore.planStats;
   $: scan = $scanStore.scanResult;
+  $: entries = $scanStore.plan?.entries ?? [];
+  let actionFilter: 'all' | 'delete' | 'review' | 'keep' = 'all';
+  let search = '';
+
+  $: filteredEntries = entries.filter((entry) => {
+    if (actionFilter !== 'all' && entry.action !== actionFilter) return false;
+    if (search && !entry.path.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
 </script>
 
 <div class="container mx-auto p-8">
@@ -70,6 +79,44 @@
 
         <div class="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg text-sm text-yellow-800 dark:text-yellow-200">
           Visual tree/treemap will be added in Phase 4.3.
+        </div>
+
+        <div class="flex items-center gap-3 text-sm">
+          <label class="text-gray-600 dark:text-gray-400" for="results-filter">Filter:</label>
+          <select
+            id="results-filter"
+            class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
+            bind:value={actionFilter}
+          >
+            <option value="all">All</option>
+            <option value="delete">Delete</option>
+            <option value="review">Review</option>
+            <option value="keep">Keep</option>
+          </select>
+          <input
+            class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 flex-1"
+            placeholder="Search path…"
+            bind:value={search}
+            type="text"
+          />
+        </div>
+
+        <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-200 space-y-2 max-h-64 overflow-auto">
+          {#each filteredEntries.slice(0, 10) as entry}
+            <div class="border-b border-gray-200 dark:border-gray-700 pb-2 mb-2 last:border-0 last:pb-0 last:mb-0">
+              <div class="font-medium">{entry.path}</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 flex gap-2">
+                <span>{entry.action}</span>
+                <span>{entry.rule_name}</span>
+              </div>
+              <div class="text-xs text-gray-500 dark:text-gray-400">{entry.reason}</div>
+            </div>
+          {/each}
+          {#if filteredEntries.length > 10}
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+              …and {filteredEntries.length - 10} more (scroll or refine filters)
+            </div>
+          {/if}
         </div>
       </div>
     {:else}

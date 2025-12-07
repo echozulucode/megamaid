@@ -7,7 +7,7 @@ Milestone 4 (Tauri GUI Integration) has officially begun. This document summariz
 ## Current Status
 
 **Phase:** 4.1 - Tauri Setup & Foundation
-**Progress:** 90% (8/9 tasks complete)
+**Progress:** 95% (final polish + runtime smoke)
 **Started:** November 22, 2025
 **Blocking:** None (Tauri CLI installed)
 
@@ -42,7 +42,7 @@ Milestone 4 (Tauri GUI Integration) has officially begun. This document summariz
 🚧 **Stability & Testing**
 - Integration tests for IPC serialization still pending
 - Desktop runtime smoke test pending
-- Progress events are basic (start/complete/error)
+- Progress events now stream counts; percent bar added
 
 ## Pending Tasks (Phase 4.1)
 

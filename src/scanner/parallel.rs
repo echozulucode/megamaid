@@ -143,6 +143,14 @@ impl ParallelScanner {
 
     /// Scans the given directory path in parallel.
     pub fn scan(&self, path: &Path) -> Result<Vec<FileEntry>, ScanError> {
+        self.scan_with_progress(path, |_| {})
+    }
+
+    /// Scans with a progress callback.
+    pub fn scan_with_progress<F>(&self, path: &Path, on_progress: F) -> Result<Vec<FileEntry>, ScanError>
+    where
+        F: Fn(usize) + Send + Sync,
+    {
         // Phase 1: Collect all paths (sequential, fast)
         let walker = WalkDir::new(path)
             .follow_links(self.config.follow_symlinks)
