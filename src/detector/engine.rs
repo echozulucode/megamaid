@@ -128,6 +128,9 @@ fn is_repo_root(entry: &FileEntry) -> bool {
     if entry.entry_type != crate::models::EntryType::Directory {
         return false;
     }
+    if is_known_junk_dir(&entry.path) {
+        return false;
+    }
     let path = &entry.path;
     if path == Path::new(".") {
         return true;
@@ -146,11 +149,34 @@ fn is_protected_manifest(entry: &FileEntry) -> bool {
     if entry.entry_type != crate::models::EntryType::Directory {
         return false;
     }
+    if is_known_junk_dir(&entry.path) {
+        return false;
+    }
     let manifests = ["package.json", "Cargo.toml", "pyproject.toml"];
     for m in manifests {
         if entry.path.join(m).exists() {
             return true;
         }
+    }
+    false
+}
+
+fn is_known_junk_dir(path: &Path) -> bool {
+    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+        let name = name.to_ascii_lowercase();
+        return matches!(
+            name.as_str(),
+            "node_modules"
+                | "target"
+                | "dist"
+                | "build"
+                | ".next"
+                | "__pycache__"
+                | ".pytest_cache"
+                | ".cache"
+                | "bin"
+                | "obj"
+        );
     }
     false
 }

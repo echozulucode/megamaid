@@ -44,6 +44,11 @@ impl PlanGenerator {
         let mut deleted_paths: Vec<PathBuf> = Vec::new();
 
         for detection in detections {
+            // Never include the root/base path directly in the plan
+            if detection.entry.path == self.base_path {
+                continue;
+            }
+
             // Check if this entry is a child of an already-deleted directory
             let is_child_of_deleted = deleted_paths.iter().any(|deleted_path| {
                 detection.entry.path.starts_with(deleted_path)
@@ -120,6 +125,9 @@ impl PlanGenerator {
 }
 
 fn is_protected_path(path: &Path) -> bool {
+    if is_known_junk_dir(path) {
+        return false;
+    }
     let candidates = [
         ".git",
         ".hg",
@@ -132,6 +140,26 @@ fn is_protected_path(path: &Path) -> bool {
         if path.join(c).exists() {
             return true;
         }
+    }
+    false
+}
+
+fn is_known_junk_dir(path: &Path) -> bool {
+    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+        let name = name.to_ascii_lowercase();
+        return matches!(
+            name.as_str(),
+            "node_modules"
+                | "target"
+                | "dist"
+                | "build"
+                | ".next"
+                | "__pycache__"
+                | ".pytest_cache"
+                | ".cache"
+                | "bin"
+                | "obj"
+        );
     }
     false
 }
@@ -231,6 +259,22 @@ mod tests {
         let plan = generator.generate(detections);
 
         assert_eq!(plan.entries[0].action, CleanupAction::Review);
+    }
+
+    #[test]
+    fn test_root_path_is_skipped() {
+        let generator = PlanGenerator::new(PathBuf::from("/test"));
+
+        let detections = vec![create_test_detection(
+            "/test",
+            1_000,
+            "build_artifact",
+            "Root should be skipped",
+        )];
+
+        let plan = generator.generate(detections);
+
+        assert!(plan.entries.is_empty());
     }
 
     #[test]

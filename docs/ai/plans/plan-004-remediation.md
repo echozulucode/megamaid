@@ -1,10 +1,11 @@
 # Milestone 4 Remediation Plan (GUI safety & intent alignment)
 
 ## Problems Observed
-- Detector/Planner can mark entire project roots for deletion (e.g., repo root, “.”) instead of just junk (node_modules/target/dist/etc.).
-- Source/config directories and repos with VCS markers aren’t fully protected; size-based rules can flag code.
+- Detector/Planner can mark entire project roots for deletion (e.g., repo root, ".") instead of just junk (node_modules/target/dist/etc.).
+- Source/config directories and repos with VCS markers aren't fully protected; size-based rules can flag code.
 - UI action buttons only change in-memory state; Delete is not guarded for protected paths; no batch actions.
 - No IPC integration tests to verify scan/detect/plan safety on real project shapes.
+- Phase 4.3/4.4 UI gaps: results tree/treemap missing, plan save dialog shows "open" and reports success on cancel, review buttons feel no-op, root (".") shows in lists, and plan/results still allow junk vs. project roots to mix.
 
 ## Objectives
 1) Prevent deletes of project roots/source trees; focus deletes on junk artifacts and large binaries.
@@ -14,15 +15,16 @@
 ## Actions
 1) Detector/Planner Safety
    - Add repo-aware guard: if path contains VCS markers (.git/.hg), manifests (package.json, Cargo.toml), or high source-file ratio, default to Keep/Review; never Delete automatically.
-   - Restrict build-artifact deletes to known junk patterns; block Delete on “.” or repo root.
-   - Add optional “archive” action for large source dirs (Review/Archive instead of Delete).
+   - Restrict build-artifact deletes to known junk patterns; block Delete on "." or repo root.
+   - Add optional "archive" action for large source dirs (Review/Archive instead of Delete).
 2) Planner Defaults
    - Downgrade Delete → Review when protected path detected; refuse plans that Delete “.” or repo root.
    - Surface rule/reason in UI prominently.
 3) UI Safeguards
-   - Disable Delete buttons for protected paths (root, VCS-containing, manifest-containing).
-   - Add batch actions: “Delete all build artifacts”, “Keep/Review all source/manifests”.
-   - Persist edits and give toasts for Save/Load and inline edits; keep “Archive” hook for future execution.
+   - Disable Delete buttons for protected paths (root, VCS-containing, manifest-containing); hide "." entirely.
+   - Add batch actions: "Delete all build artifacts", "Keep/Review all source/manifests".
+   - Persist edits and give toasts for Save/Load and inline edits; keep "Archive" hook for future execution.
+   - Add Phase 4.3 visual tree for results with protected-path awareness; ensure save dialog is a true "save" dialog and only confirms on actual write.
 4) Tests
    - IPC integration tests (5+): fixture repo with src + node_modules; assert only junk flagged Delete.
    - E2E: action edits persist after Save/Reload; Delete disabled on protected paths.

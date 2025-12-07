@@ -20,19 +20,41 @@ export type ScanState = {
   lastProgressPath?: string;
 };
 
+function sanitizePlan(plan?: CleanupPlan): CleanupPlan | undefined {
+  if (!plan) return plan;
+  const entries = (plan.entries ?? []).filter((entry) => entry.path !== '.');
+  return { ...plan, entries };
+}
+
+function recomputePlanStats(plan?: CleanupPlan): PlanStats | undefined {
+  if (!plan) return undefined;
+  const delete_count = plan.entries.filter((e) => e.action === 'delete').length;
+  const review_count = plan.entries.filter((e) => e.action === 'review').length;
+  const keep_count = plan.entries.filter((e) => e.action === 'keep').length;
+  const total_size = plan.entries.reduce((acc, e) => acc + e.size, 0);
+  return {
+    total_entries: plan.entries.length,
+    delete_count,
+    review_count,
+    keep_count,
+    total_size,
+  };
+}
+
 function loadInitialState(): ScanState {
   if (typeof localStorage !== 'undefined') {
     const raw = localStorage.getItem('megamaid-scan-state');
     if (raw) {
       try {
         const parsed = JSON.parse(raw) as Partial<ScanState>;
+        const sanitizedPlan = sanitizePlan(parsed.plan);
         return {
           directory: parsed.directory ?? '',
           status: parsed.status ?? 'idle',
           scanResult: parsed.scanResult,
           detections: parsed.detections,
-          plan: parsed.plan,
-          planStats: parsed.planStats,
+          plan: sanitizedPlan,
+          planStats: recomputePlanStats(sanitizedPlan) ?? parsed.planStats,
           error: parsed.error ?? null,
           filesScanned: parsed.filesScanned ?? 0,
           lastProgressPath: parsed.lastProgressPath,

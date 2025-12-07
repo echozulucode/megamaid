@@ -21,6 +21,7 @@
 
   $: filteredEntries = plan
     ? plan.entries.filter((entry) => {
+        if (entry.path === '.') return false; // never show root
         if (actionFilter === 'all') return true;
         return entry.action === actionFilter;
       })
@@ -29,9 +30,17 @@
   function updateAction(path: string, action: CleanupAction) {
     if (!plan) return;
     if (action === 'delete' && isProtectedPath(path)) {
-        planError = 'Delete is disabled for protected paths (repo roots/manifests).';
-        return;
+      planError = 'Delete is disabled for protected paths (repo roots/manifests).';
+      return;
     }
+    const current = plan.entries.find((e) => e.path === path);
+    if (current && current.action === action) {
+      infoMessage = `Action for ${path} is already set to ${action}.`;
+      return;
+    }
+    planError = null;
+    infoMessage = null;
+
     const updatedEntries = plan.entries.map((entry) =>
       entry.path === path ? { ...entry, action } : entry
     );
@@ -42,6 +51,7 @@
       plan: updatedPlan,
       planStats: updatedStats,
     }));
+    infoMessage = `Updated ${path} -> ${action}.`;
   }
 
   function computeStats(entries: CleanupEntry[]) {
@@ -65,10 +75,12 @@
     try {
       const loaded = await loadPlanFromFile();
       if (loaded) {
-        const loadedStats = await getPlanStats(loaded);
+        const cleanedEntries = loaded.entries.filter((entry) => entry.path !== '.');
+        const normalizedPlan = { ...loaded, entries: cleanedEntries };
+        const loadedStats = await getPlanStats(normalizedPlan);
         scanStore.update((s) => ({
           ...s,
-          plan: loaded,
+          plan: normalizedPlan,
           planStats: loadedStats,
           directory: loaded.base_path?.toString() ?? s.directory,
         }));
@@ -87,8 +99,8 @@
     if (!plan) return;
     saving = true;
     try {
-      await savePlanToFile(plan);
-      infoMessage = 'Plan saved to disk.';
+      const saved = await savePlanToFile(plan);
+      infoMessage = saved ? 'Plan saved to disk.' : 'Save canceled.';
     } catch (err) {
       planError = err instanceof Error ? err.message : String(err);
     } finally {
@@ -101,6 +113,7 @@
     planError = null;
     batchMessage = null;
     const updatedEntries = plan.entries.map((entry) => {
+      if (entry.path === '.') return entry;
       if (rule === 'build_artifact' && entry.rule_name === 'build_artifact' && !isProtectedPath(entry.path)) {
         return { ...entry, action: 'delete' as CleanupAction };
       }
@@ -121,25 +134,31 @@
 </script>
 
 <div class="container mx-auto p-8">
-    <div class="card space-y-6">
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-3xl font-bold">Cleanup Plan</h1>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Review and adjust actions, then save or load plans from disk.
-          </p>
-        </div>
-        {#if plan}
-          <button class="btn-secondary" on:click={() => (showActions = !showActions)}>
-            {showActions ? 'Hide Actions' : 'Show Actions'}
-          </button>
-        {/if}
+  <div class="card space-y-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-bold">Cleanup Plan</h1>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          Review and adjust actions, then save or load plans from disk.
+        </p>
       </div>
+      {#if plan}
+        <button class="btn-secondary" on:click={() => (showActions = !showActions)}>
+          {showActions ? 'Hide Actions' : 'Show Actions'}
+        </button>
+      {/if}
+    </div>
 
     {#if stats && plan}
       <div>
         <h2 class="text-xl font-semibold mb-3">Plan Summary</h2>
-        <div class="grid grid-cols-3 gap-4">
+        <div class="grid grid-cols-4 gap-4">
+          <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <div class="text-xs text-gray-600 dark:text-gray-400">Base Path</div>
+            <div class="text-xs text-gray-800 dark:text-gray-100 truncate max-w-xs">
+              {plan.base_path ?? 'Unknown'}
+            </div>
+          </div>
           <div class="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
             <div class="text-xs text-gray-600 dark:text-gray-400">Delete</div>
             <div class="text-xl font-bold text-red-600 dark:text-red-400">{stats.delete_count}</div>
@@ -176,9 +195,16 @@
         <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-200 space-y-2 max-h-64 overflow-auto">
           {#each filteredEntries.slice(0, 10) as entry}
             <div class="border-b border-gray-200 dark:border-gray-700 pb-2 mb-2 last:border-0 last:pb-0 last:mb-0">
-              <div class="font-medium">{entry.path}</div>
+              <div class="font-medium flex items-center gap-2">
+                <span>{entry.path}</span>
+                {#if isProtectedPath(entry.path)}
+                  <span class="px-2 py-1 text-[10px] rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
+                    Protected
+                  </span>
+                {/if}
+              </div>
               <div class="text-xs text-gray-500 dark:text-gray-400 flex gap-2">
-                <span>{entry.action}</span>
+                <span class="uppercase tracking-wide">{entry.action}</span>
                 <span>{entry.rule_name}</span>
               </div>
               <div class="text-xs text-gray-500 dark:text-gray-400">{entry.reason}</div>
@@ -191,7 +217,9 @@
                     Review
                   </button>
                   <button
-                    class="btn-primary text-xs"
+                    class="btn-primary text-xs disabled:opacity-50"
+                    disabled={isProtectedPath(entry.path)}
+                    title={isProtectedPath(entry.path) ? 'Delete is blocked for protected paths.' : 'Delete this path.'}
                     on:click={() => updateAction(entry.path, 'delete')}
                   >
                     Delete
@@ -202,9 +230,18 @@
           {/each}
           {#if filteredEntries.length > 10}
             <div class="text-xs text-gray-500 dark:text-gray-400">
-              …and {filteredEntries.length - 10} more (scroll or export to view all)
+              .and {filteredEntries.length - 10} more (scroll or export to view all)
             </div>
           {/if}
+        </div>
+
+        <div class="flex flex-wrap gap-3 mt-3 text-xs">
+          <button class="btn-secondary" on:click={() => applyBatch('build_artifact')} disabled={!plan}>
+            Delete all build artifacts
+          </button>
+          <button class="btn-secondary" on:click={() => applyBatch('source_keep')} disabled={!plan}>
+            Keep all protected paths
+          </button>
         </div>
       </div>
     {:else}
@@ -213,7 +250,7 @@
           No cleanup plan loaded. Generate a plan from the Scan page to populate this view.
         </p>
         <button class="btn-secondary mt-3" on:click={handleLoadPlan} disabled={loading}>
-          {loading ? 'Loading…' : 'Load Plan'}
+          {loading ? 'Loading.' : 'Load Plan'}
         </button>
       </div>
     {/if}
@@ -221,10 +258,10 @@
     {#if plan}
       <div class="flex gap-3">
         <button class="btn-primary" on:click={handleSavePlan} disabled={saving}>
-          {saving ? 'Saving…' : 'Save Plan'}
+          {saving ? 'Saving.' : 'Save Plan'}
         </button>
         <button class="btn-secondary" on:click={handleLoadPlan} disabled={loading}>
-          {loading ? 'Loading…' : 'Load Plan'}
+          {loading ? 'Loading.' : 'Load Plan'}
         </button>
       </div>
     {/if}
@@ -238,6 +275,12 @@
     {#if infoMessage}
       <div class="p-3 border border-green-200 dark:border-green-700 bg-green-50 dark:bg-green-900/30 rounded-lg text-sm text-green-800 dark:text-green-100">
         {infoMessage}
+      </div>
+    {/if}
+
+    {#if batchMessage}
+      <div class="p-3 border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-sm text-blue-800 dark:text-blue-100">
+        {batchMessage}
       </div>
     {/if}
   </div>

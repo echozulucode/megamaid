@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { open } from '@tauri-apps/plugin-dialog';
+import { open, save } from '@tauri-apps/plugin-dialog';
 
 export type ScannerConfig = {
   max_depth: number | null;
@@ -160,16 +160,15 @@ export async function loadPlanFromFile(): Promise<CleanupPlan | null> {
   return invoke<CleanupPlan>('load_cleanup_plan', { path: selected });
 }
 
-export async function savePlanToFile(plan: CleanupPlan): Promise<void> {
+export async function savePlanToFile(plan: CleanupPlan): Promise<boolean> {
   await ensureTauri();
-  const savePath = await open({
-    directory: false,
-    multiple: false,
-    save: true,
+  const target = await save({
     filters: [{ name: 'Plans', extensions: ['yaml', 'yml', 'toml'] }],
     defaultPath: 'megamaid-plan.yaml',
   });
-  const target = Array.isArray(savePath) ? savePath[0] : savePath;
-  if (!target) return;
+  if (!target) {
+    return false;
+  }
   await invoke<void>('save_cleanup_plan', { plan, output_path: target });
+  return true;
 }
