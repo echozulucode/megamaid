@@ -28,6 +28,6 @@ test('results summary cards render', async ({ page }) => {
 
 test('plan summary renders', async ({ page }) => {
   await page.goto('/#/plan');
-  await expect(page.getByRole('heading', { name: 'Cleanup Plan' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Plan Review & Actions' })).toBeVisible();
   await expect(page.getByText('No cleanup plan loaded.', { exact: false })).toBeVisible();
 });

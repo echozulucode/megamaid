@@ -1,5 +1,5 @@
 @phase4_4 @plan
-Feature: Review and edit cleanup actions
+Feature: Review and edit cleanup actions in Manage Plan
   As a user finalizing a cleanup plan
   I want to adjust actions safely
   So that only junk is deleted and important paths are kept
@@ -8,8 +8,8 @@ Feature: Review and edit cleanup actions
     Given a generated cleanup plan is loaded
     And protected paths are identified based on VCS markers and manifests
 
-  Scenario: Inline action changes are applied
-    When the user changes an entry to keep, review, or delete
+  Scenario: Inline action changes are applied in the tree or list
+    When the user changes an entry to keep, review, or delete from the Tree or List tab
     Then the plan updates that single entry action
     And the plan summary counts reflect the change
 

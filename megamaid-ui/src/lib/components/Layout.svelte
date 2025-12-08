@@ -5,7 +5,7 @@
     { path: '/', label: 'Home', icon: '🏠' },
     { path: '/scan', label: 'Scan', icon: '🔍' },
     { path: '/results', label: 'Results', icon: '📊' },
-    { path: '/plan', label: 'Plan', icon: '📝' },
+    { path: '/plan', label: 'Manage Plan', icon: '📋' },
     { path: '/execute', label: 'Execute', icon: '⚡' },
   ];
 
